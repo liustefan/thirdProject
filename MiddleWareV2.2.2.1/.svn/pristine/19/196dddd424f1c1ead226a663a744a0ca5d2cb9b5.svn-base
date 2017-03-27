@@ -1,0 +1,507 @@
+package com.zkhk.util;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import com.hkbithealth.bean.ph.PHHealthExam;
+import com.hkbithealth.bean.ph.PHHealthExamDetailMedicine;
+import com.hkbithealth.bean.ph.PHHealthExamDetailNonimmune;
+import com.hkbithealth.bean.ph.PHHealthExamDetailinPatient;
+import com.hkbithealth.bean.ph.PHHealthExamdetailFamilyBed;
+import com.hkbithealth.bean.ph.PHOmem;
+import com.hkbithealth.bean.ph.PhHealthExamDetail;
+
+/**
+ * @ClassName:     HealthCheckUtil.java 
+ * @Description:   健康体检工具包
+ * @author         lenovo  
+ * @version        V1.0   
+ * @Date           2016年3月21日 上午11:14:17
+*****/
+public class HealthCheckUtil {
+    
+    /** 
+     * @Title: getMemBasicInfo 
+     * @Description: 获取会员的基本资料 
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-18
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getMemBasicInfo(PHHealthExam exam) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PHOmem omem = exam.getOmem();
+        if(omem != null){
+            map.put("memberId", omem.getMemberid());
+            map.put("memName", omem.getMemName());
+            map.put("gender", omem.getGender());
+            Date date = omem.getBirthDate();
+            if(date != null){
+                String birthDate = TimeUtil.formatDate(date);
+                map.put("age", TimeUtil.getCurrentAgeByBirthdate(birthDate));
+            }else{
+                map.put("age", 0);
+            }
+            map.put("tel", omem.getTel());
+            map.put("idcard", omem.getIdCard());
+        }else{
+            map.put("memberId", exam.getMemberID());
+            map.put("memName", exam.getName());
+            map.put("idcard", exam.getiDCard());
+            map.put("age", 0);
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getSymptoms 
+     * @Description: 获取会员的自觉症状
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-18
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getSymptoms(PHHealthExam exam) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PhHealthExamDetail symptom = exam.getHealthExamDetail();
+        if(symptom != null){
+            map.put("symptomStr", symptom.getSymptomStr());
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getGeneralSituation 
+     * @Description: 获取会员的一般情况
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-18
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getGeneralSituation(PHHealthExam exam,Integer age) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PhHealthExamDetail generalSituation = exam.getHealthExamDetail();
+        if(generalSituation != null){
+            map.put("bodyTemperature", generalSituation.getBodyTemperature());
+            map.put("pulseRate", generalSituation.getPulseRate());
+            map.put("respiratoryRate", generalSituation.getRespiratoryRate());
+            map.put("leftBloodPressure", generalSituation.getLeftDiastolic()+"/"+generalSituation.getLeftSystolic());
+            map.put("rightBloodPressure", generalSituation.getRightDiastolic()+"/"+generalSituation.getRightSystolic());
+            map.put("height", generalSituation.getHeight());
+            map.put("weight", generalSituation.getWeight());
+            map.put("waist", generalSituation.getWaist());
+            map.put("bMI", generalSituation.getBMI());
+            if(age > 65){
+                map.put("agedHealthEvaluateStr", generalSituation.getAgedHealthEvaluateStr());
+                map.put("agedLifeEvaluateStr", generalSituation.getAgedLifeEvaluateStr());
+                map.put("agedCognitionStr", generalSituation.getAgedCognitionStr());
+                map.put("agedFeelingStr", generalSituation.getAgedFeelingStr());
+            }
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getLifeStyle 
+     * @Description: 获取会员的生活方式
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-18
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getLifeStyle(PHHealthExam exam) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PhHealthExamDetail lifeStyle = exam.getHealthExamDetail();
+        if(lifeStyle != null){
+            map.put("sportFrequencyStr", lifeStyle.getSportFrequencyStr());
+            map.put("sportDuration", lifeStyle.getSportDuration());
+            map.put("sportTotalTime",lifeStyle.getSportTotalTime());
+            map.put("sportWay", lifeStyle.getSportWay());
+            map.put("eatingHabitsStr", lifeStyle.getEatingHabitsStr());
+            map.put("smokingStateStr",lifeStyle.getSmokingStateStr());
+            map.put("dailySmoking", lifeStyle.getDailySmoking());
+            map.put("smokingStartAge",lifeStyle.getSmokingStartAge());
+            map.put("smokingEndAge",lifeStyle.getSmokingEndAge());
+            map.put("drinkFrequencyStr",lifeStyle.getDrinkFrequencyStr());
+            map.put("dailyDrink", lifeStyle.getDailyDrink());
+            map.put("isAbstinenceStr", lifeStyle.getIsAbstinenceStr());
+            map.put("abstinenceAge",lifeStyle.getAbstinenceAge() );
+            map.put("drinkStartAge",lifeStyle.getDrinkStartAge() );
+            map.put("isTemulenceLastYearStr",lifeStyle.getIsTemulenceLastYearStr());
+            map.put("drinkTypeStr",lifeStyle.getDrinkTypeStr() );
+            map.put("occupationStr",lifeStyle.getOccupationStr() );
+            map.put("typeOfWork",lifeStyle.getTypeOfWork() );
+            map.put("workTime", lifeStyle.getWorkTime());
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getOrganFunction 
+     * @Description: 获取会员的脏器功能
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-21
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getOrganFunction(PHHealthExam exam) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PhHealthExamDetail organFunction = exam.getHealthExamDetail();
+        if(organFunction != null){
+            map.put("lipsStr", organFunction.getLipsStr());
+            map.put("dentitionStr", organFunction.getDentitionStr());
+            map.put("throatStr", organFunction.getThroatStr());
+            map.put("leftVision",organFunction.getLeftVision());
+            map.put("rightVision", organFunction.getRightVision());
+            map.put("leftCorrectVision",organFunction.getLeftCorrectVision());
+            map.put("rightCorrectVision",organFunction.getRightCorrectVision());
+            map.put("hearingStr", organFunction.getHearingStr());
+            map.put("movementStr", organFunction.getMovementStr());
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getExamination 
+     * @Description: 获取会员的查体
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-21
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getExamination(PHHealthExam exam) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PhHealthExamDetail examination = exam.getHealthExamDetail();
+        if(examination != null){
+            map.put("eyegroundStr",examination.getEyegroundStr() );
+            map.put("skinStr", examination.getSkinStr());
+            map.put("scleroStr", examination.getScleroStr());
+            map.put("lymphStr",examination.getLymphStr());
+            map.put("lungBarrelChestStr", examination.getLungBarrelChestStr());
+            map.put("lungBreathSoundsStr",examination.getLungBreathSoundsStr());
+            map.put("lungRalesStr",examination.getLungRalesStr());
+            map.put("heartRate", examination.getHeartRate());
+            map.put("rhythmStr", examination.getRhythmStr());
+            map.put("murmurStr", examination.getMurmurStr());
+            map.put("painStr", examination.getPain());
+            map.put("blockStr", examination.getBlockStr());
+            map.put("hepatomegalyStr", examination.getHepatomegalyStr());
+            map.put("splenomegalyStr", examination.getSplenomegalyStr());
+            map.put("moveSonantStr", examination.getMoveSonantStr());
+            map.put("lowLimbEdemaStr", examination.getLowLimbEdemaStr());
+            map.put("arteriopalmusStr", examination.getArteriopalmusStr());
+            map.put("anusTactusStr", examination.getAnusTactusStr());
+            map.put("breastStr", examination.getBreastStr());
+            map.put("pudendumStr", examination.getPudendumStr());
+            map.put("vaginaStr", examination.getVaginaStr());
+            map.put("cervicalStr",examination.getCervicalStr() );
+            map.put("uteriStr", examination.getUteriStr());
+            map.put("enclosureStr", examination.getEnclosureStr());
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getExamination 
+     * @Description: 获取会员的辅助检查
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-21
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getAccessoryExamination(PHHealthExam exam) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PhHealthExamDetail accessoryExam = exam.getHealthExamDetail();
+        if(accessoryExam != null){
+            map.put("hemoglobin",accessoryExam.getHemoglobin());
+            map.put("leukocyte",accessoryExam.getLeukocyte());
+            map.put("platelet",accessoryExam.getPlatelet());
+            map.put("bloodOther",accessoryExam.getBloodOther());
+            map.put("urineProtein",accessoryExam.getUrineProtein());
+            map.put("urineSugar",accessoryExam.getUrineSugar());
+            map.put("urineAcetoneBody",accessoryExam.getUrineAcetoneBody());
+            map.put("urineOccultBlood",accessoryExam.getUrineOccultBlood());
+            map.put("urineOther",accessoryExam.getUrineOther());
+            map.put("gLU",accessoryExam.getGLU());
+            map.put("pGLU",accessoryExam.getPGLU());
+            map.put("cardiogramStr",accessoryExam.getCardiogramStr());
+            map.put("urineMicroAlbumin",accessoryExam.getUrineMicroAlbumin());
+            map.put("fecalOccultBloodStr",accessoryExam.getFecalOccultBloodStr());
+            map.put("hBA1C",accessoryExam.getHBA1C());
+            map.put("hBSAGStr",accessoryExam.getHBSAGStr());
+            map.put("cPT",accessoryExam.getCPT());
+            map.put("aST",accessoryExam.getAST());
+            map.put("aLB",accessoryExam.getALB());
+            map.put("tBIL",accessoryExam.getTBIL());
+            map.put("cBIL",accessoryExam.getCBIL());
+            map.put("cR",accessoryExam.getCR());
+            map.put("bUN",accessoryExam.getBUN());
+            map.put("serumPotassium",accessoryExam.getSerumPotassium());
+            map.put("serumSodium",accessoryExam.getSerumSodium());
+            map.put("cHOL",accessoryExam.getCHOL());
+            map.put("tG",accessoryExam.getTG());
+            map.put("lDL_C",accessoryExam.getLDL_C());
+            map.put("hDL_C",accessoryExam.getHDL_C());
+            map.put("x_RAYStr", accessoryExam.getX_RAYStr());
+            map.put("b_UltrasonicStr", accessoryExam.getB_UltrasonicStr());
+            map.put("cervicalSmearStr", accessoryExam.getCervicalSmearStr());
+            map.put("assistCheckOther", accessoryExam.getAssistCheckOther());
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getTcm 
+     * @Description: 获取会员的中医体质辨识
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-21
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getTcm(PHHealthExam exam) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PhHealthExamDetail tcm = exam.getHealthExamDetail();
+        if(tcm != null){
+            map.put("tCM_PHZStr",tcm.getTCM_PHZStr());
+            map.put("tCM_YXZStr",tcm.getTCM_YXZStr());
+            map.put("tCM_QXZStr",tcm.getTCM_QXZStr());
+            map.put("tCM_YIXZStr",tcm.getTCM_YIXZStr());
+            map.put("tCM_TSZStr",tcm.getTCM_TSZStr());
+            map.put("tCM_SRZStr",tcm.getTCM_SRZStr());
+            map.put("tCM_XTZStr",tcm.getTCM_XTZStr());
+            map.put("tCM_QYZStr",tcm.getTCM_QYZStr());
+            map.put("tCM_TBZStr",tcm.getTCM_TBZStr());
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getProblems 
+     * @Description: 获取会员的现存主要健康问题
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-21
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getProblems(PHHealthExam exam) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PhHealthExamDetail problems = exam.getHealthExamDetail();
+        if(problems != null){
+            map.put("cerebralVesselStr",problems.getCerebralVesseltr());
+            map.put("kidneyStr",problems.getKidneyStr());
+            map.put("heartStr",problems.getHeartStr());
+            map.put("bloodPipeStr",problems.getBloodPipeStr());
+            map.put("eyePartStr",problems.getEyePartStr());
+            map.put("nervousSystemStr",problems.getNervousSystemStr());
+            map.put("otherSystemStr",problems.getOtherSystemStr());
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getHospitalCourse 
+     * @Description: 获取会员的住院治疗情况
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-21
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getHospitalCourse(PHHealthExam exam) throws Exception{
+        Map<String,Object> mapFinal = new HashMap<String, Object>();
+        List<PHHealthExamdetailFamilyBed> familyBedHistoryList = exam.getHealthExamDetailFamilyBed();
+        List<PHHealthExamDetailinPatient> hospitalizationList = exam.getHealthExamDetailInPatient();
+        if(familyBedHistoryList.size() > 0){
+            List<Map<String,Object>> mapFamilyBedHistoryList = new ArrayList<Map<String,Object>>();
+            for(PHHealthExamdetailFamilyBed bed: familyBedHistoryList){
+                Map<String,Object> map = new HashMap<String, Object>();
+                String dateBegin = "";
+                Date startDate = bed.getStartDate();
+                if(startDate != null){
+                    dateBegin = TimeUtil.formatDate(startDate);
+                }
+                String dateEnd = "";
+                Date endTime = bed.getEndTime();
+                if(endTime != null){
+                    dateEnd = TimeUtil.formatDate(endTime);
+                }
+                map.put("startDate", dateBegin);
+                map.put("endTime", dateEnd);
+                map.put("institution", bed.getInstitution());
+                map.put("resson", bed.getResson());
+                map.put("patientID", bed.getPatientID());
+                mapFamilyBedHistoryList.add(map);
+            }
+            mapFinal.put("familyBedHistory",mapFamilyBedHistoryList);
+        }
+        if(hospitalizationList.size() > 0){
+            List<Map<String,Object>> mapHospitalizationList = new ArrayList<Map<String,Object>>();
+            for(PHHealthExamDetailinPatient hospitalization: hospitalizationList){
+                Map<String,Object> map = new HashMap<String, Object>();
+                String dateBegin = "";
+                Date startDate = hospitalization.getStartDate();
+                if(startDate != null){
+                    dateBegin = TimeUtil.formatDate(startDate);
+                }
+                String dateEnd = "";
+                Date endTime = hospitalization.getEndTime();
+                if(endTime != null){
+                    dateEnd = TimeUtil.formatDate(endTime);
+                }
+                map.put("startDate", dateBegin);
+                map.put("endTime", dateEnd);
+                map.put("institution", hospitalization.getInstitution());
+                map.put("resson", hospitalization.getResson());
+                map.put("patientID", hospitalization.getPatientID());
+                mapHospitalizationList.add(map);
+            }
+            mapFinal.put("hospitalization",mapHospitalizationList);
+        }
+        return mapFinal;
+    }
+    
+    /** 
+     * @Title: getMedication 
+     * @Description: 获取会员的主要用药情况
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-21
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static List<Map<String,Object>> getMedication(PHHealthExam exam) throws Exception{
+        List<Map<String,Object>> mapList = new ArrayList<Map<String,Object>>();
+        List<PHHealthExamDetailMedicine> medicationList = exam.getHealthExamDetailMedicine();
+        if(medicationList.size() > 0){
+            for(PHHealthExamDetailMedicine medication: medicationList){
+                Map<String,Object> map = new HashMap<String, Object>();
+                map.put("drugName", medication.getDrugName());
+                map.put("drugUsage", medication.getDrugUsage());
+                map.put("drugFreq", medication.getDrugFreq());
+                map.put("drugDosage", medication.getDrugDosage());
+                map.put("drugUnit", medication.getDrugUnit());
+                map.put("drugUseTime", medication.getDrugUseTime());
+                map.put("drugCompliance", medication.getDrugCompliance());
+                map.put("remarks", medication.getRemarks());
+                mapList.add(map);
+            }
+        }
+        return mapList;
+    }
+    
+    /** 
+     * @Title: getVaccination 
+     * @Description: 获取会员的非免疫规划预防接种史
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-21
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static List<Map<String,Object>> getVaccination(PHHealthExam exam) throws Exception{
+        List<Map<String,Object>> mapList = new ArrayList<Map<String,Object>>();
+        List<PHHealthExamDetailNonimmune> vaccinationList = exam.getHealthExamDetailNonimmune();
+        if(vaccinationList.size() > 0){
+            for(PHHealthExamDetailNonimmune vaccination: vaccinationList){
+                Map<String,Object> map = new HashMap<String, Object>();
+                map.put("vaccinateName", vaccination.getVaccinateName());
+                String date = "";
+                Date vaccinationDate = vaccination.getVaccinateDate();
+                if(vaccinationDate != null){
+                    date = TimeUtil.formatDate(vaccinationDate);
+                }
+                map.put("vaccinateDate", date);
+                map.put("institution", vaccination.getInstitution());
+                mapList.add(map);
+            }
+        }
+        return mapList;
+    }
+    
+    /** 
+     * @Title: getHealthEvaluation 
+     * @Description: 获取会员的健康评价
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-21
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getHealthEvaluation(PHHealthExam exam) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PhHealthExamDetail evaluation = exam.getHealthExamDetail();
+        if(evaluation != null){
+            map.put("healthEvaluateStr",evaluation.getHealthEvaluateStr());
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getHealthGuidance 
+     * @Description: 获取会员的健康指导
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-21
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getHealthGuidance(PHHealthExam exam) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PhHealthExamDetail guidance = exam.getHealthExamDetail();
+        if(guidance != null){
+            map.put("healthGuideStr",guidance.getHealthGuideStr());
+            
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getRiskFactorControl 
+     * @Description: 获取会员的危险因素控制
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-21
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getRiskFactorControl(PHHealthExam exam) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PhHealthExamDetail risk = exam.getHealthExamDetail();
+        if(risk != null){
+            map.put("riskFactorStr",risk.getRiskFactorStr());
+            map.put("riskFactorTarget",risk.getRiskFactor_Target());
+            map.put("riskFactorVaccine",risk.getRiskFactor_Vaccine());
+            map.put("riskFactorOther",risk.getRiskFactor_Other());
+        }
+        return map;
+    }
+    
+}
+

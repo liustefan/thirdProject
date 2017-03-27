@@ -1,0 +1,15 @@
+#驱动包
+c3p0.driverClass=com.mysql.jdbc.Driver
+#mysql.jdbcUrl=jdbc:mysql://121.201.32.169:3306/dshktest?useUnicode=true&characterEncoding=UTF-8
+#链接字符
+c3p0.jdbcUrl=jdbc:mysql://192.168.10.27:3306/product_v30?useUnicode=true&characterEncoding=UTF-8
+#用户名
+c3p0.user=root
+#密码
+c3p0.password=zkhk2014
+
+c3p0.minPoolSize=5
+c3p0.maxPoolSize=1000
+c3p0.acquireIncrement=5
+c3p0.initialPoolSize=5
+c3p0.maxIdleTime=60

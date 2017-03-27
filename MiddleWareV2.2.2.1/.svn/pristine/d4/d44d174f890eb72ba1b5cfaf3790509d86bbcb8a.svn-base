@@ -1,0 +1,81 @@
+package com.zkhk.services;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.log4j.Logger;
+import org.springframework.stereotype.Service;
+
+import com.alibaba.fastjson.JSON;
+import com.hkbithealth.bean.ph.PHDictitem;
+import com.hkbithealth.service.ph.PhDictionaryService;
+import com.zkhk.dao.DataDicDao;
+import com.zkhk.entity.ReturnResult;
+
+@Service("dataDicService")
+public class DataDicServiceImpl implements DataDicService {
+
+	private Logger logger = Logger.getLogger(DataDicServiceImpl.class);
+	
+	private PhDictionaryService dictionaryService = PhDictionaryService.getInstance();
+	
+	@Resource(name = "dataDicDao")
+	private DataDicDao dataDicDao;
+	
+	/** 
+     * @Title: findAllDictionary 
+     * @Description: 查询所有字典【健康体检和随访】
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-14
+     * @throws IOException    
+     * @retrun String
+     */
+    public String findAllDictionary(HttpServletRequest request) throws Exception{
+        ReturnResult result = new ReturnResult();
+        Map<String, List<PHDictitem>> map = dictionaryService.findAllSecond();
+        if(map.size() > 0){
+            result.setState(0);
+            result.setMessage("查询所有字典【健康体检和随访】成功");
+            result.setContent(map);
+            logger.info("查询所有字典【健康体检和随访】成功");
+        }else{
+            result.setState(3);
+            result.setMessage("查询不到所有字典【健康体检和随访】");
+            logger.info("查询不到所有字典【健康体检和随访】");
+        }
+        return JSON.toJSONString(result);
+    }
+    
+    /** 
+     * @Title: findDiseaseDictionary 
+     * @Description: 查询疾病史字典
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @throws IOException    
+     * @retrun String
+     */
+    public String findDiseaseDictionary(HttpServletRequest request) throws Exception{
+        ReturnResult result = new ReturnResult();
+        Map<String, Object> map = new HashMap<String, Object>();
+        List<Map<String,Object>> list = dataDicDao.findDiseaseDictionary();
+        if(list.size() > 0){
+            map.put("diseaseDictionary", list);
+            result.setState(0);
+            result.setMessage("查询疾病史字典成功");
+            result.setContent(map);
+            logger.info("查询疾病史字典成功");
+        }else{
+            result.setState(3);
+            result.setMessage("查询不到疾病史字典");
+            logger.info("查询不到疾病史字典");
+        }
+        return JSON.toJSONString(result);
+    }
+    
+}

@@ -1,0 +1,88 @@
+package com.zkhk.constants;
+/**
+ * 常量信息
+ * @author bit
+ *
+ */
+public class Constants {
+	
+	public static final String SUCCESS="success";
+	
+	public static final String ERROR="error";
+	
+	//心电文件上传参数名称
+	public static final String ECG_PARAM_FILE="ecg_file";
+	
+	//脉搏文件上传参数名称
+	public static final String PPG_PARAM_FILE="ppg_file";
+	
+	//会员头像
+	public static final String MEMBER_HENDIMG="headImg";
+	
+	//mongdb文件集合
+	public static final String MDB_FILE="fs";
+	
+	//每测量一次血压(blood pressure)得1 分
+    public static final int ONCE_MEASURE_BP_SCORE = 1;
+    
+    //每测量一次血糖(Blood glucose)得3 分
+    public static final int ONCE_MEASURE_BG_SCORE = 3;
+    
+    //每测量一次三合一(three in one)得2 分
+    public static final int ONCE_MEASURE_TIN_SCORE = 2;
+    
+    //每测量一次miniHolter得5 分
+    public static final int ONCE_MEASURE_MNH_SCORE = 5;
+    
+    //回答一次问卷得3 分
+    public static final int ONCE_ANSWER_QUESTION_SCORE = 3;
+    
+    //查看一次报告得2 分
+    public static final int ONCE_CHECK_REPORT_SCORE = 2;
+    
+    //消息发送次数
+    public static final int PUSH_COUNT = 3;
+    
+    //消息推送接口
+    public static final String PUSH_URL="http://192.168.10.112:8082/Push/pushByMemberIds";
+    
+    //编码
+    public static final String  PUSH_CHARSET="UTF-8";
+
+    //账号被冻结提示
+    public static final String  ACCOUNT_FREEZE="accountFreeze";
+    
+    //无效的参数
+    public static final String  INVALID_PARAM="invalidparam";
+        
+    //seesion失效
+    public static final String  INVALID_SESSION="invalidSession";
+    
+    /* 健康档案缓存名 */
+    public static final String  HEALTH_FILE_CACHE = "healthFileCache";
+    
+    /* 健康档案缓存KEY */
+    public static final String  HEALTH_FILE_KEY = "healthFileKey";
+    
+    /* 疾病字典缓存名 */
+    public static final String  DIESASE_DICTIONARY_CACHE = "diseaseDictionaryCache";
+    
+    /* 疾病字典缓存KEY */
+    public static final String  DIESASE_DICTIONARY_KEY = "diseaseDictionaryKey";
+    
+    /* 体检老年人认知功能--粗筛阳性值(CognitionScreenPositive)  */
+    public static final int  EXAM_COGNITION_SCREEN_POSITIVE = 2;
+    
+    /* 体检老年人认知功能--粗筛阳性值描述(CognitionScreenPositiveDesc)  */
+    public static final String  EXAM_COGNITION_SCREEN_POSITIVE_DESC = " ,简易智力状态检查, 总分";
+    
+    /* 体检老年人情感状态--粗筛阳性值(FeelingScreenPositive)  */
+    public static final int  EXAM_FEELING_SCREEN_POSITIVE = 2;
+    
+    /* 体检老年人情感状态--粗筛阳性值描述(FeelingScreenPositiveDesc)  */
+    public static final String  EXAM_FEELING_SCREEN_POSITIVE_DESC = " ,老年人抑郁评分检查, 总分";
+    
+    /* 中文字符串分割标志 znStringSeparate */
+    public static final String  ZN_STRING_SEPARATE = " ，";
+    
+}

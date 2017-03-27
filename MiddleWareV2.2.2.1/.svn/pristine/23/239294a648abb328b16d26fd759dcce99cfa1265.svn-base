@@ -1,0 +1,448 @@
+package com.zkhk.dao;
+
+import java.util.List;
+import java.util.Map;
+
+import com.zkhk.entity.AnomalyEcg;
+import com.zkhk.entity.ChartParam;
+import com.zkhk.entity.Ecg2;
+import com.zkhk.entity.Mem8;
+import com.zkhk.entity.Obsr;
+import com.zkhk.entity.Oecg;
+import com.zkhk.entity.Omds;
+import com.zkhk.entity.OmdsParam;
+import com.zkhk.entity.Oppg;
+import com.zkhk.entity.Osbp;
+import com.zkhk.entity.RecordParam;
+import com.zkhk.entity.ReturnMeasureData;
+
+
+public interface MeasureDao {
+    /**
+     * 查询会员血压信息1
+     * @param param
+     * @return
+     * @throws Exception
+     */
+	List<Osbp> findOsbpByOmdsValue(OmdsParam param) throws Exception;
+    /**
+     * 查询会员血糖信息1
+     * @param param
+     * @return
+     * @throws Exception
+     */
+	List<Obsr> findObsrByOmdsValue(OmdsParam param) throws Exception;
+	/**
+	 * 查询会员心电数据1
+	 * @param param
+	 * @return
+	 * @throws Exception
+	 */
+	List<Oecg> findOecgByOmdsValue(OmdsParam param)throws Exception;
+	/**
+	 * 查询会员脉搏信息1
+	 * @param param
+	 * @return
+	 * @throws Exception
+	 */
+	List<Oppg> findOppgByOmdsValue(OmdsParam param) throws Exception;
+	
+	/**
+	 * 查询会员血压信息2
+	 * @param param
+	 * @return
+	 * @throws Exception
+	 */
+	List<Osbp> findOsbpByRecordValue(RecordParam param)throws Exception;
+	
+	/**
+	 * 查询会员血糖信息2
+	 * @param param
+	 * @return
+	 * @throws Exception
+	 */
+	List<Obsr> findObsrByRecordValue(RecordParam param)throws Exception;
+	/**
+	 * 查询会员脉搏信息2
+	 * @param param
+	 * @return
+	 * @throws Exception
+	 */
+	List<Oppg> findOppgByRecordValue(RecordParam param)throws Exception;
+	
+	/**
+	 * 查询会员心信息2
+	 * @param param
+	 * @return
+	 * @throws Exception
+	 */
+	List<Oecg> findOecgByRecordValue(RecordParam param)throws Exception;
+	
+	/**
+	 * 查询会员异常心电信息
+	 * @param memberId
+	 * @return
+	 * @throws Exception
+	 */
+	List<AnomalyEcg> findAnomalyEcgbyId(long id ,String name) throws Exception;
+	/**
+	 * 保存会员血糖测量数据
+	 * @param obsr
+	 * @return
+	 * @throws Exception
+	 */
+	void saveObsrData(Obsr obsr)throws Exception;
+	/**
+	 * 保存会员血压测量数据
+	 * @param osbp
+	 * @return
+	 * @throws Exception
+	 */
+	void saveOsbpData(Osbp osbp) throws Exception;
+	
+	/**
+	 * 获取异常心电数据
+	 * @param id
+	 * @return
+	 * @throws Exception
+	 */
+	List<Ecg2> findEcg2ById(String ids)throws Exception;
+	/**
+	 * 获取时间id该代码必须是同步的
+	 * @return
+	 */
+	long insertEventId() throws Exception;
+	
+	/**
+	 * 保存测量主表数据
+	 * @param omds
+	 * @throws Exception
+	 */
+	void saveOmdsData(Omds omds)throws Exception;
+	/**
+	 * 获取插入数据id
+	 * @param string
+	 * @return
+	 */
+	long insertId(String tableName)throws Exception;
+	/**
+	 * 保存心电数据
+	 * @param oecg
+	 * @throws Exception
+	 */
+	void saveOecgData(Oecg oecg) throws Exception;
+	/**
+	 * 保存脉搏数据
+	 * @param oppg
+	 * @throws Exception
+	 */
+	void saveOppgData(Oppg oppg) throws Exception;
+	/**
+	 * 查询最近一次的测量数据
+	 * @param memberId
+	 * @return
+	 * @throws Exception
+	 */
+	Osbp findObsrByMemberId(int memberId) throws Exception;
+	/**
+	 * 根据id号查询心电数据
+	 * @param id
+	 * @return
+	 * @throws Exception
+	 */
+	Oecg findOecgById(long id) throws Exception;
+	/**
+	 * 根据id查询会员脉搏数据
+	 * @param id
+	 * @return
+	 * @throws Exception
+	 */
+	Oppg findOppgById(long id)throws Exception;
+	/**
+	 * 查询所有在异常心电 数据
+	 * @param memberId
+	 * @param startTime
+	 * @param endTime
+	 * @return
+	 */
+	List<Oecg> findAnomalyEcgbyMemberIdAndTime(int memberId, String startTime,String endTime)throws Exception;
+	/**
+	 * 查询所有在异常血糖
+	 * @param memberId
+	 * @param startTime
+	 * @param endTime
+	 * @return
+	 */
+	List<Obsr> findAnomalyBsrbyMemberIdAndTime(int memberId, String startTime,String endTime)throws Exception;
+	/**
+	 * 查询所有的异常脉搏
+	 * @param memberId
+	 * @param startTime
+	 * @param endTime
+	 * @return
+	 */
+	List<Oppg> findAnomalyPpgbyMemberIdAndTime(int memberId, String startTime,String endTime)throws Exception;
+	/**
+	 * 查询所有的异常血压
+	 * @param memberId
+	 * @param startTime
+	 * @param endTime
+	 * @return
+	 */
+	List<Osbp> findAnomalySbpbyMemberIdAndTime(int memberId, String startTime,String endTime)throws Exception;
+	
+	/**
+	 * 添加会员活力积分
+	 */
+	void addMemActivityScore(Mem8 mem8) throws Exception;
+	/**
+	 * 判断是web添加上传的还是app上传的，web上传的为true，app上传的为false
+	 * @param rawImage
+	 * @return
+	 * @throws Exception
+	 */
+	boolean findOecgByRawImg(String rawImage) throws Exception;
+	/**
+	 * 根据eventId查询数据
+	 * @param eventId
+	 * @return
+	 * @throws Exception
+	 */
+	Oppg getPpgByEventId(long eventId) throws Exception;
+	/**
+	 * 根据eventId查询心电数据
+	 * @param eventId
+	 * @return
+	 * @throws Exception
+	 */
+	Oecg getEcgByEventId(long eventId) throws Exception;
+	
+	/**
+	 * 根据类型和数据id删除数据
+	 * @param deleteRecord
+	 * @return
+	 * @throws Exception
+	 */
+	int deleteMeasureRecord(Integer memberId,Integer eventId,Integer dataType) throws Exception;
+	
+	/**
+	 * 查询单项测量chart图数据
+	 * @param param
+	 * @return
+	 * @throws Exception
+	 */
+	Map<?, ?> queryMeasueChartData(ChartParam param) throws Exception;
+	
+	 /** 
+	 * @Title: findOsbpByOmdsValueNew 
+	 * @Description: 根据参数获取血压list 
+	 * @liuxaioqin
+     * @createDate 2016-01-28
+	 * @param param
+	 * @return
+	 * @throws Exception    
+	 * @retrun List<ReturnMeasureData>
+	 */
+	List<ReturnMeasureData> findOsbpByOmdsValueNew(OmdsParam param) throws Exception;
+	
+	/** 
+     * @Title: findObsrByOmdsValueNew 
+     * @Description: 根据参数获取血糖list 
+     * @liuxaioqin
+     * @createDate 2016-01-28
+     * @param param
+     * @return
+     * @throws Exception    
+     * @retrun List<ReturnMeasureData>
+     */
+	List<ReturnMeasureData> findObsrByOmdsValueNew(OmdsParam param) throws Exception;
+	
+	/** 
+     * @Title: findThreeJoinOneByParamNew 
+     * @Description: 根据参数获取三合一list 
+     * @liuxaioqin
+     * @createDate 2016-01-28
+     * @param param
+     * @return
+     * @throws Exception    
+     * @retrun List<ReturnMeasureData>
+     */
+	List<ReturnMeasureData> findThreeJoinOneByParamNew(OmdsParam param)throws Exception;
+	
+	/** 
+     * @Title: findOecgByOmdsValueNew 
+     * @Description: 根据参数获取动态心电minilist 
+     * @liuxaioqin
+     * @createDate 2016-01-28
+     * @param param
+     * @return
+     * @throws Exception    
+     * @retrun List<ReturnMeasureData>
+     */
+	List<ReturnMeasureData> findOecgByOmdsValueNew(OmdsParam param)throws Exception;
+	
+	 /** 
+	 * @Title: findAllMeasureData 
+	 * @Description: 根据参数获取所有的测量数据
+	 * @liuxaioqin
+     * @createDate 2016-02-02 
+	 * @param param
+	 * @return
+	 * @throws Exception    
+	 * @retrun List<ReturnMeasureData>
+	 */
+	public List<ReturnMeasureData> findAllMeasureData(OmdsParam param)throws Exception;
+	
+	/** 
+     * @Title: getAllMeasureRecord 
+     * @Description: 获取各种测量类型记录
+     * @liuxaioqin
+     * @createDate 2016-05-18 
+     * @param request
+     * @param response
+     * @throws IOException    
+     * @retrun void
+     */
+	public List<Map<String,Object>> getAllMeasureRecord(Integer memberId)throws Exception;
+	
+	/** 
+     * @Title: findLastestMonthMeasureCount 
+     * @Description: 获取最近一个月内四种类型的测量条数
+     * @liuxaioqin
+     * @createDate 2016-05-18 
+     * @param request
+     * @param response
+     * @throws IOException    
+     * @retrun void
+     */
+	public List<Map<String,Object>> findLastestMonthMeasureCount(Integer memberId)throws Exception;
+	
+	/** 
+     * @Title: findAllMeasureRecordByParam 
+     * @Description: 根据不同条件查询测量数据
+     * @liuxaioqin
+     * @createDate 2016-05-30 
+     * @param request
+     * @param response
+     * @throws IOException    
+     * @retrun void
+     */
+	public List<Map<String,Object>> findAllMeasureRecordByParam(Integer memberId,Integer eventType,Integer isAbnormal,
+			String beginTime,String endTime,Integer pageNow,Integer pageSize)throws Exception;
+	
+	/** 
+     * @Title: findOecgAbnormalCount 
+     * @Description: 获取mini心电异常个数
+     * @liuxaioqin
+     * @createDate 2016-05-30 
+     * @param request
+     * @param response
+     * @throws Exception    
+     * @retrun Integer
+     */
+	public Integer findOecgAbnormalCount(Integer oecgId) throws Exception;
+	
+	/** 
+     * @Title: checkHasObsrRecord 
+     * @Description: 检测该会员的该测量时间是否已存在血糖数据
+     * @liuxaioqin
+     * @createDate 2016-12-08 
+     * @param memberId
+     * @param testTime
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer checkHasObsrRecord(Integer memberId,String testTime) throws Exception;
+    
+    /** 
+     * @Title: checkHasOsbpRecord 
+     * @Description: 检测该会员的该测量时间是否已存在血压数据
+     * @liuxaioqin
+     * @createDate 2016-12-08 
+     * @param memberId
+     * @param testTime
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer checkHasOsbpRecord(Integer memberId,String testTime) throws Exception;
+    
+    /** 
+     * @Title: checkHasOecgRecord 
+     * @Description: 检测该会员的该测量时间是否已存在mini心电数据
+     * @liuxaioqin
+     * @createDate 2016-12-08 
+     * @param memberId
+     * @param testTime
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer checkHasOecgRecord(Integer memberId,String testTime) throws Exception;
+    
+    /** 
+     * @Title: checkHasThreeInOneRecord 
+     * @Description: 检测该会员的该测量时间是否已存在三合一数据
+     * @liuxaioqin
+     * @createDate 2016-12-08 
+     * @param memberId
+     * @param testTime
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer checkHasThreeInOneRecord(Integer memberId,String testTime) throws Exception;
+    
+    /** 
+     * @Title: insertOmdsReturnPrimaryKey 
+     * @Description: 新增测量数据保存到omds自动返回主键key
+     * @liuxaioqin
+     * @createDate 2017-02-08 
+     * @param omds
+     * @throws Exception    
+     * @retrun Long
+     */
+    public Long insertOmdsReturnPrimaryKey(Omds omds) throws Exception;
+    
+    /** 
+     * @Title: insertOsbpReturnPrimaryKey 
+     * @Description: 新增血压数据保存到osbp自动返回主键key
+     * @liuxaioqin
+     * @createDate 2017-02-08 
+     * @param osbp
+     * @throws Exception    
+     * @retrun Long
+     */
+    public Long insertOsbpReturnPrimaryKey(Osbp osbp) throws Exception;
+    
+    /** 
+     * @Title: insertObsrReturnPrimaryKey 
+     * @Description: 新增血糖数据保存到osbp自动返回主键key
+     * @liuxaioqin
+     * @createDate 2017-02-08 
+     * @param obsr
+     * @throws Exception    
+     * @retrun Long
+     */
+    public Long insertObsrReturnPrimaryKey(Obsr obsr) throws Exception;
+    
+    /** 
+     * @Title: insertOecgReturnPrimaryKey 
+     * @Description: 新增心电mini数据保存到oecg自动返回主键key
+     * @liuxaioqin
+     * @createDate 2017-02-08 
+     * @param oecg
+     * @throws Exception    
+     * @retrun Long
+     */
+    public Long insertOecgReturnPrimaryKey(Oecg oecg) throws Exception;
+    
+    /** 
+     * @Title: insertOppgReturnPrimaryKey 
+     * @Description: 新增脉搏数据保存到oppg自动返回主键key
+     * @liuxaioqin
+     * @createDate 2017-02-08 
+     * @param oppg
+     * @throws Exception    
+     * @retrun Long
+     */
+    public Long insertOppgReturnPrimaryKey(Oppg oppg) throws Exception;
+	
+}

@@ -1,0 +1,8 @@
+eclipse.preferences.version=1
+encoding//resource/config.properties=UTF-8
+encoding//resource/file/config.dat=UTF-8
+encoding//resource/jdbc.properties=UTF-8
+encoding//resource/log4j.properties=UTF-8
+encoding//resource/mongodb.properties=UTF-8
+encoding//resource/rabbit.properties=UTF-8
+encoding/<project>=UTF-8

@@ -1,0 +1,283 @@
+package com.zkhk.util;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import com.hkbithealth.bean.ph.PHDiabetes;
+import com.hkbithealth.bean.ph.PHDiabetesDetail;
+import com.hkbithealth.bean.ph.PHDiabetesDetailMedicine;
+import com.hkbithealth.bean.ph.PHHypertension;
+import com.hkbithealth.bean.ph.PHHypertensionDetail;
+import com.hkbithealth.bean.ph.PHHypertensionDetailMedicine;
+import com.hkbithealth.bean.ph.PHOmem;
+
+/**
+ * @ClassName:     HealthCheckUtil.java 
+ * @Description:   健康体检工具包
+ * @author         lenovo  
+ * @version        V1.0   
+ * @Date           2016年3月21日 上午11:14:17
+*****/
+public class VisitUtil {
+    
+    /** 
+     * @Title: getHyperBasicInfo 
+     * @Description: 获取会员的高血压基本资料 
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-18
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getHyperBasicInfo(PHHypertension visit) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PHOmem omem = visit.getOmem();
+        if(omem != null){
+            map.put("memberId", omem.getMemberid());
+            map.put("memName", omem.getMemName());
+            map.put("gender", omem.getGender());
+            Date date = omem.getBirthDate();
+            if(date != null){
+                String birthDate = TimeUtil.formatDate(date);
+                map.put("age", TimeUtil.getCurrentAgeByBirthdate(birthDate));
+            }else{
+                map.put("age", 0);
+            }
+            map.put("tel", omem.getTel());
+            map.put("idcard", omem.getIdCard());
+        }else{
+            map.put("memberId", visit.getMemberID());
+            map.put("memName", visit.getName());
+            map.put("idcard", visit.getIdCard());
+            map.put("age", 0);
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getHyperPhysicalSigns 
+     * @Description: 获取会员的高血压体征
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-18
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getHyperPhysicalSigns(PHHypertension visit) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PHHypertensionDetail detail = visit.getHypertensionDetail();
+        if(detail != null){
+            map.put("systolic", detail.getSystolic());
+            map.put("diastolic", detail.getDiastolic());
+            map.put("height", detail.getHeight());
+            map.put("weight", detail.getWeight());
+            map.put("bmi", detail.getBmi());
+            map.put("otherSign", detail.getOtherSign());
+            map.put("heartRate", detail.getHeartRate());
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getHyperLifeStyle 
+     * @Description: 获取会员的高血压生活方式指导
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-18
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getHyperLifeStyle(PHHypertension visit) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PHHypertensionDetail detail = visit.getHypertensionDetail();
+        if(detail != null){
+            map.put("dailySmoking", detail.getDailySmoking());
+            map.put("dailySmokingNext", detail.getDailySmokingNext());
+            map.put("dailyDrink", detail.getDailyDrink());
+            map.put("dailyDrinkNext", detail.getDailyDrinkNext());
+            map.put("sportFrequency", detail.getSportFrequency());
+            map.put("sportDuration", detail.getSportDuration());
+            map.put("intakeSaltStr", detail.getIntakeSaltStr());
+            map.put("psychologicalRecoveryStr", detail.getPsychoRecoStr());
+            map.put("complianceBehaviorStr", detail.getCompliBehavStr());
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getHyperMedication 
+     * @Description: 获取会员的高血压用药情况
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-18
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static List<Map<String,Object>> getHyperMedication(PHHypertension visit) throws Exception{
+        List<Map<String,Object>> mapList = new ArrayList<Map<String,Object>>();
+        List<PHHypertensionDetailMedicine> medicationList = visit.getHyperDetailMedicines();
+        if(medicationList.size() > 0){
+            for(PHHypertensionDetailMedicine medication: medicationList){
+                Map<String,Object> map = new HashMap<String, Object>();
+                map.put("logID", medication.getLogID());
+                map.put("hypertensionID", medication.getHypertensionID());
+                map.put("drugName", medication.getDrugName());
+                map.put("drugUsage", medication.getDrugUsage());
+                map.put("drugFreq", medication.getDrugFreq());
+                map.put("drugDosage", medication.getDrugDosage());
+                map.put("drugUnit", medication.getDrugUnit());
+                map.put("remarks", medication.getRemarks());
+                mapList.add(map);
+            }
+        }
+        return mapList;
+    }
+    
+    /** 
+     * @Title: getHyperBasicInfo 
+     * @Description: 获取会员的糖尿病基本资料 
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-18
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getDiabeBasicInfo(PHDiabetes visit) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PHOmem omem = visit.getOmem();
+        if(omem != null){
+            map.put("memberId", omem.getMemberid());
+            map.put("memName", omem.getMemName());
+            map.put("gender", omem.getGender());
+            Date date = omem.getBirthDate();
+            if(date != null){
+                String birthDate = TimeUtil.formatDate(date);
+                map.put("age", TimeUtil.getCurrentAgeByBirthdate(birthDate));
+            }else{
+                map.put("age", 0);
+            }
+            map.put("tel", omem.getTel());
+            map.put("idcard", omem.getIdCard());
+        }else{
+            map.put("memberId", visit.getMemberID());
+            map.put("memName", visit.getName());
+            map.put("idcard", visit.getIdCard());
+            map.put("age", 0);
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getDiabePhysicalSigns 
+     * @Description: 获取会员的糖尿病体征
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-18
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getDiabePhysicalSigns(PHDiabetes visit) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PHDiabetesDetail detail = visit.getDiabetesDetail();
+        if(detail != null){
+            map.put("systolic", detail.getSystolic());
+            map.put("diastolic", detail.getDiastolic());
+            map.put("height", detail.getHeight());
+            map.put("weight", detail.getWeight());
+            map.put("bmi", detail.getBmi());
+            map.put("otherSign", detail.getOtherSign());
+            map.put("arteriopalmusStr", detail.getArteriopalmusStr());
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getHyperLifeStyle 
+     * @Description: 获取会员的糖尿病生活方式指导
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-18
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getDiabeLifeStyle(PHDiabetes visit) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PHDiabetesDetail detail = visit.getDiabetesDetail();
+        if(detail != null){
+            map.put("dailySmoking", detail.getDailySmoking());
+            map.put("dailySmokingNext", detail.getDailySmokingNext());
+            map.put("dailyDrink", detail.getDailyDrink());
+            map.put("dailyDrinkNext", detail.getDailyDrinkNext());
+            map.put("sportFrequency", detail.getSportFrequency());
+            map.put("sportDuration", detail.getSportDuration());
+            map.put("mainFood", detail.getMainFood());
+            map.put("psychologicalRecoveryStr", detail.getPsychoRecoStr());
+            map.put("complianceBehaviorStr", detail.getCompliBehavStr());
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getHyperLifeStyle 
+     * @Description: 获取会员的糖尿病辅助检查
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-18
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static Map<String,Object> getDiabeAccessoryExamination(PHDiabetes visit) throws Exception{
+        Map<String,Object> map = new HashMap<String, Object>();
+        PHDiabetesDetail detail = visit.getDiabetesDetail();
+        if(detail != null){
+            map.put("fpg", detail.getFpg());
+            map.put("hba1c", detail.getHba1c());
+            map.put("pglu", detail.getPglu());
+            map.put("checkResult", detail.getCheckResult());
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getDiabeMedication 
+     * @Description: 获取会员的糖尿病用药情况
+     * @param exam
+     * @author liuxiaoqin
+     * @createDate 2016-03-18
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public static List<Map<String,Object>> getDiabeMedication(PHDiabetes visit) throws Exception{
+        List<Map<String,Object>> mapList = new ArrayList<Map<String,Object>>();
+        List<PHDiabetesDetailMedicine> medicationList = visit.getDiabetesDetailMedicines();
+        if(medicationList.size() > 0){
+            for(PHDiabetesDetailMedicine medication: medicationList){
+                Map<String,Object> map = new HashMap<String, Object>();
+                map.put("logID", medication.getLogID());
+                map.put("diabetesID", medication.getDiabetesID());
+                map.put("drugName", medication.getDrugName());
+                map.put("drugUsage", medication.getDrugUsage());
+                map.put("drugFreq", medication.getDrugFreq());
+                map.put("drugDosage", medication.getDrugDosage());
+                map.put("drugUnit", medication.getDrugUnit());
+                map.put("remarks", medication.getRemarks());
+                mapList.add(map);
+            }
+        }
+        return mapList;
+    }
+    
+}
+

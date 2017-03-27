@@ -1,0 +1,141 @@
+package com.zkhk.services;
+
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.log4j.Logger;
+import org.springframework.stereotype.Service;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.hkbithealth.bean.ph.PHHealthExam;
+import com.hkbithealth.bean.ph.PHOmem;
+import com.hkbithealth.service.ph.PublicHealthService;
+import com.zkhk.entity.CallValue;
+import com.zkhk.entity.PHHealthExamParam;
+import com.zkhk.entity.ReturnResult;
+import com.zkhk.util.HealthCheckUtil;
+import com.zkhk.util.TimeUtil;
+
+@Service("healthExamService")
+public class HealthExamServiceImpl implements HealthExamService {
+
+	private Logger logger = Logger.getLogger(HealthExamServiceImpl.class);
+	
+	private PublicHealthService publicHealthService = PublicHealthService.getInstance();
+    
+    /** 
+     * @Title: findMyHealthExamReportList 
+     * @Description: 查询我的健康体检报告列表
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-14
+     * @throws Exception    
+     * @retrun String
+     */
+    @SuppressWarnings("unchecked")
+    public String findMyHealthExamReportList(HttpServletRequest request) throws Exception{
+        ReturnResult result = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        PHHealthExamParam param = JSON.parseObject(callValue.getParam(), PHHealthExamParam.class);
+        int memberId = callValue.getMemberId();
+        if(memberId <= 0){
+            result.setState(1);
+            result.setMessage("参数memberId【"+memberId+"】应为正整数！");
+            logger.info("参数memberId【"+memberId+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        int pageNow = param.getPageNow();
+        int pageSize = param.getPageSize();
+        PHOmem omem = new PHOmem();
+        omem.setMemberid(memberId);
+        
+        List<PHHealthExam> healthExamReportList = (List<PHHealthExam>) publicHealthService.queryPhysicalPage(omem, null, null, pageNow, pageSize).getList();
+        if(healthExamReportList.size() > 0){
+            List<Map<String,Object>> examMapList = new ArrayList<Map<String,Object>>();
+            for(PHHealthExam health: healthExamReportList){
+                Map<String,Object> examMap = new HashMap<String, Object>();
+                String date = "";
+                Date examDate = health.getExamDate();
+                if(examDate != null){
+                    date = TimeUtil.formatDate(examDate);
+                }
+                examMap.put("examDate", date);
+                examMap.put("hExamID", health.getHExamID());
+                examMap.put("healthEvaluate", "体检无异常");
+                examMapList.add(examMap);
+            }
+            result.setState(0);
+            result.setMessage("查询我的健康体检报告列表成功");
+            result.setContent(examMapList);
+            logger.info("查询我的健康体检报告列表成功");
+        }else{
+            result.setState(3);
+            result.setMessage("查询不到我的健康体检报告列表");
+            logger.info("查询不到我的健康体检报告列表");
+        }
+        return JSON.toJSONString(result);
+    }
+    
+    /** 
+     * @Title: findMyHealthExamDetail 
+     * @Description: 查询我的健康体检报告明细
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-15
+     * @throws Exception    
+     * @retrun String
+     */
+    public String findMyHealthExamDetail(HttpServletRequest request) throws Exception{
+        ReturnResult result = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        JSONObject jsonObject = JSONObject.parseObject(callValue.getParam());
+        long hExamID = jsonObject.getLong("hExamID");
+        if(hExamID <= 0){
+            result.setState(1);
+            result.setMessage("参数hExamID【"+hExamID+"】应为正整数！");
+            logger.info("参数hExamID【"+hExamID+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        PHHealthExam healthExamDetail = publicHealthService.queryPhysicalById(hExamID);
+        if(healthExamDetail.getHealthExamDetail() != null){
+            Map<String,Object> examMap = new HashMap<String, Object>();
+            examMap.put("basicInfo", HealthCheckUtil.getMemBasicInfo(healthExamDetail));
+            examMap.put("symptoms", HealthCheckUtil.getSymptoms(healthExamDetail));
+            String str  = JSON.toJSONString(examMap.get("basicInfo"));
+            JSONObject strObject = JSON.parseObject(str);
+            Integer age = strObject.getInteger("age");
+            examMap.put("generalSituation", HealthCheckUtil.getGeneralSituation(healthExamDetail,age));
+            examMap.put("lifeStyle", HealthCheckUtil.getLifeStyle(healthExamDetail));
+            examMap.put("organFunction", HealthCheckUtil.getOrganFunction(healthExamDetail));
+            examMap.put("examination", HealthCheckUtil.getExamination(healthExamDetail));
+            examMap.put("accessoryExamination", HealthCheckUtil.getAccessoryExamination(healthExamDetail));
+            examMap.put("tcmConstitutionIdentification", HealthCheckUtil.getTcm(healthExamDetail));
+            examMap.put("majorHealthProblems", HealthCheckUtil.getProblems(healthExamDetail));
+            examMap.put("hospitalCourse", HealthCheckUtil.getHospitalCourse(healthExamDetail));
+            examMap.put("medication", HealthCheckUtil.getMedication(healthExamDetail));
+            examMap.put("vaccination", HealthCheckUtil.getVaccination(healthExamDetail));
+            examMap.put("healthEvaluation", HealthCheckUtil.getHealthEvaluation(healthExamDetail));
+            examMap.put("healthGuidance", HealthCheckUtil.getHealthGuidance(healthExamDetail));
+            examMap.put("riskFactorControl", HealthCheckUtil.getRiskFactorControl(healthExamDetail));
+            result.setState(0);
+            result.setMessage("查询我的健康体检报告明细成功");
+            result.setContent(examMap);
+            logger.info("查询我的健康体检报告明细成功");
+        }else{
+            result.setState(3);
+            result.setMessage("查询不到我的健康体检报告明细");
+            logger.info("查询不到我的健康体检报告明细");
+        }
+        return JSON.toJSONString(result);
+    }
+    
+}

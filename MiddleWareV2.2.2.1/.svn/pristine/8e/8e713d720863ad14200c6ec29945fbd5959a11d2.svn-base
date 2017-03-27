@@ -1,0 +1,161 @@
+package com.zkhk.entity;
+
+/**
+ * 会员基础信息
+ * @author xiemt
+ *
+ */
+
+public class MemBasicInfo {
+	
+	private int memberId;      //会员id
+	
+	private String password;     //会员密码
+	
+	private String memberName; //会员名称
+	
+	private String gender;     //性别
+	
+	private int age;  //年龄
+	
+	private String IdCard;     //身份证号 
+	
+	private String doctorId;   //会员所属医生
+	
+	private String userAccount;   //会员账号
+	
+	private String diseaseIds;   //疾病id
+	
+	private String diseaseNames;   //疾病名称
+	
+	/* 手机号码 */
+	private String tel;
+	
+	/* 邮箱 */
+	private String email;
+	
+	/* 上次体检时间 2016-05-05 */
+	private String lastExamDate;
+	
+	/* 会员GUID */
+    private String memberGUID;
+	
+
+	public String getMemberGUID() {
+        return memberGUID;
+    }
+
+    public void setMemberGUID(String memberGUID) {
+        this.memberGUID = memberGUID;
+    }
+
+    public String getDiseaseIds() {
+		return diseaseIds;
+	}
+
+	public void setDiseaseIds(String diseaseIds) {
+		this.diseaseIds = diseaseIds;
+	}
+
+	public String getDiseaseNames() {
+		return diseaseNames;
+	}
+
+	public void setDiseaseNames(String diseaseNames) {
+		this.diseaseNames = diseaseNames;
+	}
+
+	public String getUserAccount() {
+		return userAccount;
+	}
+
+	public void setUserAccount(String userAccount) {
+		this.userAccount = userAccount;
+	}
+
+	public int getMemberId() {
+		return memberId;
+	}
+
+	public void setMemberId(int memberId) {
+		this.memberId = memberId;
+	}
+
+	public String getPassword() {
+		return password;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
+	}
+
+	public String getMemberName() {
+		return memberName;
+	}
+
+	public void setMemberName(String memberName) {
+		this.memberName = memberName;
+	}
+
+	public String getGender() {
+		if(gender != null && gender.equals("M")){
+			gender="男";
+		}else if(gender != null && gender.equals("F")){
+			gender="女";
+		}
+		return gender;
+	}
+
+	public void setGender(String gender) {
+		this.gender = gender;
+	}
+
+	public int getAge(){
+		return age;
+	}
+
+	public void setAge(int age) {
+		this.age = age;
+	}
+
+	public String getIdCard() {
+		return IdCard;
+	}
+
+	public void setIdCard(String idCard) {
+		IdCard = idCard;
+	}
+
+	public String getDoctorId() {
+		return doctorId;
+	}
+
+	public void setDoctorId(String doctorId) {
+		this.doctorId = doctorId;
+	}
+
+	public String getTel() {
+		return tel;
+	}
+
+	public void setTel(String tel) {
+		this.tel = tel;
+	}
+
+	public String getEmail() {
+		return email;
+	}
+
+	public void setEmail(String email) {
+		this.email = email;
+	}
+
+	public String getLastExamDate() {
+		return lastExamDate;
+	}
+
+	public void setLastExamDate(String lastExamDate) {
+		this.lastExamDate = lastExamDate;
+	}
+
+}

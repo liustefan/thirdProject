@@ -1,0 +1,527 @@
+package com.zkhk.dao.Impl;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.jdbc.support.rowset.SqlRowSet;
+import org.springframework.stereotype.Repository;
+import org.springframework.util.StringUtils;
+import com.zkhk.dao.VisitDao;
+import com.zkhk.entity.MemBasicInfo;
+import com.zkhk.entity.MemSearch;
+import com.zkhk.entity.Odoc;
+import com.zkhk.jdbc.JdbcService;
+import com.zkhk.util.TimeUtil;
+
+/**
+ * @ClassName:     VisitDaoImpl.java 
+ * @Description:   随访
+ * @author         liuxiaoqin  
+ * @version        V1.0   
+ * @Date           2016年03月25日 下午4:13:46
+*****/
+@Repository(value="visitDao")
+public class VisitDaoImpl implements VisitDao{
+    
+    @Resource
+    private JdbcService jdbcService;
+    
+    /** 
+     * @Title:  findCanVisitDiabeteMem
+     * @Description: 医生获取可进行糖尿病随访的会员 
+     * @author liuxiaoqin
+     * @createDate 2016-01-29
+     * @param request
+     * @param response
+     * @throws Exception    
+     */
+    public List<MemBasicInfo> findCanVisitDiabeteMem(MemSearch memSearch)throws Exception{
+        List<MemBasicInfo> list = new ArrayList<MemBasicInfo>();
+        String searchName = memSearch.getSearchParam();
+        StringBuffer sql = new StringBuffer();
+        sql.append(" SELECT o.Tel, o.Docid AS doctorId, o.BirthDate AS birthDate, o.Gender AS gender, o.IdCard AS idCard, o.Memberid AS memberId, o.MemName AS memberName, ");
+        sql.append(" GROUP_CONCAT(DISTINCT CAST(od.DiseaseID AS CHAR) ORDER BY od.DiseaseID) AS diseaseIds,GROUP_CONCAT(DISTINCT od.DiseaseName ORDER BY od.DiseaseID) AS diseaseNames ");
+        sql.append(" FROM (SELECT DISTINCT tt.Memberid FROM (SELECT o.Memberid FROM omem o,ompb m,odmt d,dgp1 g,mem3 od WHERE o.useTag = 'T' ");
+        sql.append(" AND o.orgId = g.OrgId AND g.Docid = ? AND m.memberid = o.memberid AND m.memGrpid = d.MemGrpid AND d.OdgpId = g.OdgpId AND o.Memberid = od.Memberid AND od.DiseaseID = ? ");
+        if(!StringUtils.isEmpty(searchName)){
+            sql.append(" AND  (o.MemName like '%"+searchName+"%' or o.IdCard like '%"+searchName+"%' or o.Tel like '%"+searchName+"%' ) ");
+        }
+        int endRecord = memSearch.getPageSize();
+        int beginRecord = (memSearch.getPageNow()-1)*endRecord;
+        sql.append(" GROUP BY o.Memberid HAVING COUNT(DISTINCT od.DiseaseID) = 1 ORDER BY o.MemName,o.Memberid)tt WHERE tt.Memberid ");
+        sql.append(" NOT IN (SELECT DISTINCT MemberID FROM ph_diabetes where VisitClass = 0 AND IsDeleted = 0) LIMIT "+beginRecord+" ," +endRecord +" ) ");
+        sql.append(" aa LEFT JOIN omem o ON aa.Memberid = o.memberid LEFT JOIN  mem3 od ON aa.Memberid = od.Memberid GROUP BY o.MemName, o.Memberid ");
+        String finalSql = sql.toString();
+        SqlRowSet rowSet = jdbcService.query(finalSql,new Object[]{memSearch.getDoctorId(),memSearch.getDiseaseId()});
+        while(rowSet.next()){
+            MemBasicInfo info = new MemBasicInfo();
+            info.setAge(TimeUtil.getCurrentAgeByBirthdate(rowSet.getString("birthDate")));
+            info.setDoctorId(rowSet.getString("doctorId"));
+            info.setGender(rowSet.getString("gender"));
+            info.setIdCard(rowSet.getString("idCard"));
+            info.setMemberId(rowSet.getInt("memberId"));
+            info.setMemberName(rowSet.getString("memberName"));
+            String tel = rowSet.getString("Tel");
+            if(!StringUtils.isEmpty(tel)){
+                info.setTel(tel);
+            }
+            String newDiseaseIds = rowSet.getString("diseaseIds");
+            String newDiseaseNames = rowSet.getString("diseaseNames");
+            if(!StringUtils.isEmpty(newDiseaseIds)){
+                info.setDiseaseIds(newDiseaseIds);
+            }
+            if(!StringUtils.isEmpty(newDiseaseNames)){
+                info.setDiseaseNames(newDiseaseNames);
+            }
+            list.add(info);
+        }
+        return list;
+    }
+    
+    /** 
+     * @Title: findCanVisitHyperMem 
+     * @Description: 医生获取可进行高血压随访的会员 
+     * @author liuxiaoqin
+     * @createDate 2016-01-29
+     * @param request
+     * @param response
+     * @throws Exception    
+     */
+    public List<MemBasicInfo> findCanVisitHyperMem(MemSearch memSearch)throws Exception{
+        List<MemBasicInfo> list = new ArrayList<MemBasicInfo>();
+        String searchName = memSearch.getSearchParam();
+        StringBuffer sql = new StringBuffer();
+        sql.append(" SELECT o.Tel, o.Docid AS doctorId, o.BirthDate AS birthDate, o.Gender AS gender, o.IdCard AS idCard, o.Memberid AS memberId, o.MemName AS memberName, ");
+        sql.append(" GROUP_CONCAT(DISTINCT CAST(od.DiseaseID AS CHAR) ORDER BY od.DiseaseID) AS diseaseIds,GROUP_CONCAT(DISTINCT od.DiseaseName ORDER BY od.DiseaseID) AS diseaseNames ");
+        sql.append(" FROM (SELECT DISTINCT tt.Memberid FROM (SELECT o.Memberid FROM omem o,ompb m,odmt d,dgp1 g,mem3 od WHERE o.useTag = 'T' ");
+        sql.append(" AND o.orgId = g.OrgId AND g.Docid = ? AND m.memberid = o.memberid AND m.memGrpid = d.MemGrpid AND d.OdgpId = g.OdgpId AND o.Memberid = od.Memberid AND od.DiseaseID = ? ");
+        if(!StringUtils.isEmpty(searchName)){
+            sql.append(" AND  (o.MemName like '%"+searchName+"%' or o.IdCard like '%"+searchName+"%' or o.Tel like '%"+searchName+"%' ) ");
+        }
+        int endRecord = memSearch.getPageSize();
+        int beginRecord = (memSearch.getPageNow()-1)*endRecord;
+        sql.append(" GROUP BY o.Memberid HAVING COUNT(DISTINCT od.DiseaseID) = 1 ORDER BY o.CreateTime DESC)tt WHERE tt.Memberid ");
+        sql.append(" NOT IN (SELECT DISTINCT MemberID FROM ph_hypertension where VisitClass = 0 AND IsDeleted = 0) LIMIT "+beginRecord+" ," +endRecord +" ) ");
+        sql.append(" aa LEFT JOIN omem o ON aa.Memberid = o.memberid LEFT JOIN  mem3 od ON aa.Memberid = od.Memberid GROUP BY o.MemName, o.Memberid ");
+        String finalSql = sql.toString();
+        SqlRowSet rowSet = jdbcService.query(finalSql,new Object[]{memSearch.getDoctorId(),memSearch.getDiseaseId()});
+        while(rowSet.next()){
+            MemBasicInfo info = new MemBasicInfo();
+            info.setAge(TimeUtil.getCurrentAgeByBirthdate(rowSet.getString("birthDate")));
+            info.setDoctorId(rowSet.getString("doctorId"));
+            info.setGender(rowSet.getString("gender"));
+            info.setIdCard(rowSet.getString("idCard"));
+            info.setMemberId(rowSet.getInt("memberId"));
+            info.setMemberName(rowSet.getString("memberName"));
+            String tel = rowSet.getString("Tel");
+            if(!StringUtils.isEmpty(tel)){
+                info.setTel(tel);
+            }
+            String newDiseaseIds = rowSet.getString("diseaseIds");
+            String newDiseaseNames = rowSet.getString("diseaseNames");
+            if(!StringUtils.isEmpty(newDiseaseIds)){
+                info.setDiseaseIds(newDiseaseIds);
+            }
+            if(!StringUtils.isEmpty(newDiseaseNames)){
+                info.setDiseaseNames(newDiseaseNames);
+            }
+            list.add(info);
+        }
+        return list;
+    }
+    
+    /** 
+     * @Title: findDoctorBasicInfo 
+     * @Description: 获取医生的基本资料
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-04-04
+     * @return
+     * @throws Exception    
+     * @retrun Odoc
+     */
+    public Odoc findDoctorBasicInfo(Integer doctorId)throws Exception{
+        String sql = " SELECT Docid ,DocName FROM odoc WHERE Docid = ? AND Tag = 'T' ";
+       SqlRowSet rowSet = jdbcService.query(sql, new Object[]{doctorId});
+       while(rowSet.next()){
+           Odoc doc = new Odoc();
+           doc.setDoctorId(rowSet.getInt("Docid"));
+           doc.setDoctorName(rowSet.getString("DocName"));
+           return doc;
+       }
+       return null;
+    }
+    
+    /** 
+     * @Title: hasVisitingHyperRecord 
+     * @Description: 该会员是否存在待随访的高血压记录 
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-04-11
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer hasVisitingHyperRecord(Integer memberId)throws Exception{
+        int count = 0;
+        String sql = " SELECT COUNT(HypertensionID) FROM ph_hypertension WHERE MemberID = ? AND VisitClass = 0 AND IsDeleted = 0 ";
+        count = jdbcService.queryForInt(sql, new Object[]{memberId});
+        return count;
+    }
+    
+    /** 
+     * @Title: hasVisitingDiabetesRecord 
+     * @Description: 该会员是否存在待随访的糖尿病记录 
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-04-11
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer hasVisitingDiabetesRecord(Integer memberId)throws Exception{
+        int count = 0;
+        String sql = " SELECT COUNT(DiabetesID) FROM ph_diabetes WHERE MemberID = ? AND VisitClass = 0 AND IsDeleted = 0  ";
+        count = jdbcService.queryForInt(sql, new Object[]{memberId});
+        return count;
+    }
+    
+    /** 
+     * @Title: findLifeAndPhysicalAndExamination 
+     * @Description: 根据会员id自动获取最新的体格，生活方式 
+     * @param memberId
+     * @author liuxiaoqin
+     * @createDate 2016-04-28
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Map<String,Object> findLifeAndPhysicalAndExamination(Integer memberId,String visitType)throws Exception{
+    	 Map<String,Object> map = new HashMap<String, Object>();
+    	 StringBuffer sql = new StringBuffer();
+    	 sql.append(" SELECT a.testTime,b.Height,b.Weight,b.BMI,b.DailySmoking,b.DailySmoking_Next, ");
+    	 sql.append(" b.DailyDrink,b.DailyDrink_Next FROM ( ");
+    	 sql.append(" SELECT DiabetesID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime ");
+    	 sql.append(" FROM ph_diabetes WHERE MemberID = ? AND VisitClass > 0 AND IsDeleted = 0 ORDER BY testTime DESC LIMIT 1 ");
+    	 sql.append(" )a LEFT JOIN ph_diabetesdetail b ON a.DiabetesID = b.DiabetesID ");
+    	 sql.append(" union ");
+    	 sql.append(" SELECT c.testTime,d.Height,d.Weight,d.BMI,d.DailySmoking,d.DailySmoking_Next,d.DailyDrink, ");
+    	 sql.append(" d.DailyDrink_Next FROM ( ");
+    	 sql.append(" SELECT HypertensionID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime ");
+    	 sql.append(" FROM ph_hypertension WHERE MemberID = ? AND VisitClass > 0 AND IsDeleted = 0 ORDER BY testTime DESC LIMIT 1 ");
+    	 sql.append(" )c LEFT JOIN ph_hypertensiondetail d ON c.HypertensionID = d.HypertensionID ");
+    	 sql.append(" union ");
+    	 sql.append(" SELECT e.testTime, ");
+    	 sql.append(" f.Height,f.Weight,f.BMI,f.DailySmoking,NULL AS DailySmoking_Next,f.DailyDrink,NULL AS DailyDrink_Next ");
+    	 sql.append("  FROM ( ");
+    	 sql.append(" SELECT HExamID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime ");
+    	 sql.append(" FROM ph_healthexam WHERE MemberID = ? AND IsDeleted = 0 ORDER BY testTime DESC LIMIT 1 ");
+    	 sql.append(" )e LEFT JOIN ph_healthexamdetail f ON e.HExamID = f.HExamID ");
+    	 sql.append(" order by testTime DESC LIMIT 1 ");
+    	 String finalSql = sql.toString();
+         SqlRowSet rowSet = jdbcService.query(finalSql,new Object[]{memberId,memberId,memberId});
+         while(rowSet.next()){
+        	 map.put("height",rowSet.getDouble("Height"));
+        	 map.put("weight",rowSet.getDouble("Weight"));
+        	 map.put("bmi",rowSet.getDouble("BMI"));
+        	 map.put("dailySmoking",rowSet.getInt("DailySmoking"));
+        	 map.put("dailySmokingNext",rowSet.getInt("DailySmoking_Next"));
+        	 map.put("dailyDrink",rowSet.getInt("DailyDrink"));
+        	 map.put("dailyDrinkNext",rowSet.getInt("DailyDrink_Next"));
+         }
+         Map<String,Object> mapSport = findTheLatestSportInfo(memberId);
+         if(!mapSport.isEmpty()){
+    		 map.put("sportFrequency",mapSport.get("sportFrequency"));
+    		 map.put("sportDuration",mapSport.get("sportDuration"));
+    	 }
+         Map<String,Object> mapBloodPressure = findTheLatestBloodPressure(memberId);
+         if(!mapBloodPressure.isEmpty()){
+    		 map.put("systolic",mapBloodPressure.get("systolic"));
+    		 map.put("diastolic",mapBloodPressure.get("diastolic"));
+    	 }
+         if(visitType.equals("D")){
+        	 Map<String,Object> mapFpg = findTheLatestFpg(memberId);
+        	 if(!mapFpg.isEmpty()){
+        		 map.put("fpg",mapFpg.get("fpg"));
+        	 }
+        	 Map<String,Object> mapHba1c = findTheLatestHba1c(memberId);
+        	 if(!mapHba1c.isEmpty()){
+            	 map.put("hba1c",mapHba1c.get("hba1c"));
+        	 }
+        	 Map<String,Object> mapPglu = findTheLatestPglu(memberId);
+        	 if(!mapPglu.isEmpty()){
+            	 map.put("pglu",mapPglu.get("pglu"));
+        	 }
+         }
+    	 return map;
+    }
+    
+    /** 
+     * @Title: findTheLatestSportInfo 
+     * @Description: 根据会员id自动获取最新的运动情况
+     * @param memberId
+     * @author liuxiaoqin
+     * @createDate 2016-04-28
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Map<String,Object> findTheLatestSportInfo(Integer memberId)throws Exception{
+    	Map<String,Object> map = new HashMap<String, Object>();
+	   	StringBuffer sql = new StringBuffer();
+	   	sql.append(" SELECT a.testTime,b.SportFrequency,b.SportDuration FROM ( ");
+	   	sql.append(" SELECT DiabetesID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime ");
+	   	sql.append(" FROM ph_diabetes WHERE MemberID = ? AND VisitClass > 0 AND IsDeleted = 0 ORDER BY testTime DESC LIMIT 1 ");
+	   	sql.append(" )a LEFT JOIN ph_diabetesdetail b ON a.DiabetesID = b.DiabetesID ");
+	   	sql.append(" union ");
+	   	sql.append(" SELECT c.testTime,d.SportFrequency,d.SportDuration FROM ( ");
+	   	sql.append(" SELECT HypertensionID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime ");
+	   	sql.append(" FROM ph_hypertension WHERE MemberID = ? AND VisitClass > 0 AND IsDeleted = 0 ORDER BY testTime DESC LIMIT 1 ");
+	   	sql.append(" )c LEFT JOIN ph_hypertensiondetail d ON c.HypertensionID = d.HypertensionID ");
+	   	sql.append(" order by testTime DESC LIMIT 1 ");
+	   	String finalSql = sql.toString();
+        SqlRowSet rowSet = jdbcService.query(finalSql,new Object[]{memberId,memberId});
+        while(rowSet.next()){
+        	map.put("sportFrequency",rowSet.getString("SportFrequency"));
+       	    map.put("sportDuration",rowSet.getInt("SportDuration"));
+        }
+   	    return map;
+    }
+    
+    /** 
+     * @Title: findTheLatestBloodPressure 
+     * @Description: 根据会员id自动获取最新的血压数据
+     * @param memberId
+     * @author liuxiaoqin
+     * @createDate 2016-04-28
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Map<String,Object> findTheLatestBloodPressure(Integer memberId)throws Exception{
+    	Map<String,Object> map = new HashMap<String, Object>();
+	   	StringBuffer sql = new StringBuffer();
+	   	sql.append(" SELECT a.testTime,b.Systolic,b.Diastolic FROM ( ");
+	   	sql.append(" SELECT DiabetesID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime ");
+	   	sql.append(" FROM ph_diabetes WHERE MemberID = ? AND VisitClass > 0 AND IsDeleted = 0 ORDER BY testTime DESC LIMIT 1 ");
+	   	sql.append(" )a LEFT JOIN ph_diabetesdetail b ON a.DiabetesID = b.DiabetesID ");
+	   	sql.append(" union ");
+	   	sql.append(" SELECT c.testTime,d.Systolic,d.Diastolic FROM ( ");
+	   	sql.append(" SELECT HypertensionID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime ");
+	   	sql.append(" FROM ph_hypertension WHERE MemberID = ? AND VisitClass > 0 AND IsDeleted = 0 ORDER BY testTime DESC LIMIT 1 ");
+	   	sql.append(" )c LEFT JOIN ph_hypertensiondetail d ON c.HypertensionID = d.HypertensionID ");
+	   	sql.append(" union ");
+	   	sql.append(" SELECT e.testTime,(SELECT CASE WHEN (f.LeftSystolic IS NOT NULL) THEN f.LeftSystolic  ELSE f.RightSystolic END) AS Systolic, ");
+	   	sql.append(" (SELECT CASE WHEN (f.LeftDiastolic IS NOT NULL) THEN f.LeftDiastolic  ELSE f.RightDiastolic END) AS Diastolic FROM ( ");
+	   	sql.append(" SELECT HExamID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime ");
+	   	sql.append(" FROM ph_healthexam WHERE MemberID = ? AND IsDeleted = 0 ORDER BY testTime DESC LIMIT 1 ");
+	   	sql.append(" )e LEFT JOIN ph_healthexamdetail f ON e.HExamID = f.HExamID ");
+	   	sql.append(" union ");
+		sql.append(" (SELECT TestTime AS testTime,SBP AS Systolic,DBP AS Diastolic FROM osbp where Memberid = ? ");
+	   	sql.append(" and DelTag = 0  ORDER BY TestTime DESC LIMIT 1) ");
+	   	sql.append(" order by testTime DESC LIMIT 1 ");
+	   	String finalSql = sql.toString();
+        SqlRowSet rowSet = jdbcService.query(finalSql,new Object[]{memberId,memberId,memberId,memberId});
+        while(rowSet.next()){
+        	map.put("systolic",rowSet.getInt("Systolic"));
+       	    map.put("diastolic",rowSet.getInt("Diastolic"));
+        }
+   	    return map;
+    }
+    
+    /** 
+     * @Title: findTheLatestFpg 
+     * @Description: 根据会员id自动获取最新的空腹血糖
+     * @param memberId
+     * @author liuxiaoqin
+     * @createDate 2016-04-28
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Map<String,Object> findTheLatestFpg(Integer memberId)throws Exception{
+	   	Map<String,Object> map = new HashMap<String, Object>();
+	   	StringBuffer sql = new StringBuffer();
+	   	sql.append(" SELECT a.testTime,b.FPG FROM ( ");
+	   	sql.append(" SELECT DiabetesID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime ");
+	   	sql.append(" FROM ph_diabetes WHERE MemberID = ? AND VisitClass > 0 AND IsDeleted = 0 ORDER BY testTime DESC LIMIT 1 ");
+	   	sql.append(" )a LEFT JOIN ph_diabetesdetail b ON a.DiabetesID = b.DiabetesID ");
+	   	sql.append(" union ");
+	   	sql.append(" (SELECT TestTime AS testTime,BsValue as FPG from obsr where Memberid = ? ");
+	   	sql.append(" and DelTag = 0 and timePeriod = 1 ORDER BY TestTime DESC LIMIT 1) ");
+	   	sql.append(" union ");
+	   	sql.append(" SELECT e.testTime,f.GLU AS FPG FROM ( ");
+	   	sql.append(" SELECT HExamID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime ");
+	   	sql.append(" FROM ph_healthexam WHERE MemberID = ? AND IsDeleted = 0 ORDER BY testTime DESC LIMIT 1 ");
+	   	sql.append(" )e LEFT JOIN ph_healthexamdetail f ON e.HExamID = f.HExamID ");
+	   	sql.append(" order by testTime DESC LIMIT 1 ");
+	   	String finalSql = sql.toString();
+        SqlRowSet rowSet = jdbcService.query(finalSql,new Object[]{memberId,memberId,memberId});
+        while(rowSet.next()){
+        	Double fpg = rowSet.getDouble("FPG");
+        	if(fpg != null){
+        		map.put("fpg",fpg);
+        	}
+        }
+   	    return map;
+   }
+    
+    /** 
+     * @Title: findTheLatestPglu 
+     * @Description: 根据会员id自动获取最新的餐后血糖
+     * @param memberId
+     * @author liuxiaoqin
+     * @createDate 2016-04-28
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Map<String,Object> findTheLatestPglu(Integer memberId)throws Exception{
+	   	Map<String,Object> map = new HashMap<String, Object>();
+	   	StringBuffer sql = new StringBuffer();
+	   	sql.append(" SELECT a.testTime,b.PGLU FROM ( ");
+	   	sql.append(" SELECT DiabetesID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime ");
+	   	sql.append(" FROM ph_diabetes WHERE MemberID = ? AND VisitClass > 0 AND IsDeleted = 0 ORDER BY testTime DESC LIMIT 1 ");
+	   	sql.append(" )a LEFT JOIN ph_diabetesdetail b ON a.DiabetesID = b.DiabetesID ");
+	   	sql.append(" union ");
+	   	sql.append(" SELECT e.testTime,f.PGLU AS FPG FROM ( ");
+	   	sql.append(" SELECT HExamID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime ");
+	   	sql.append(" FROM ph_healthexam WHERE MemberID = ? AND IsDeleted = 0 ORDER BY testTime DESC LIMIT 1 ");
+	   	sql.append(" )e LEFT JOIN ph_healthexamdetail f ON e.HExamID = f.HExamID ");
+		sql.append(" union");
+	   	sql.append(" (SELECT r.TestTime AS testTime ,r.BsValue  FROM obsr r WHERE Memberid= ? AND timePeriod IN (2,4,6) AND DelTag = 0 ORDER BY testTime DESC LIMIT 1)");
+	   	sql.append(" order by testTime DESC LIMIT 1 ");
+	   	String finalSql = sql.toString();
+        SqlRowSet rowSet = jdbcService.query(finalSql,new Object[]{memberId,memberId,memberId});
+        while(rowSet.next()){
+        	Double pglu = rowSet.getDouble("PGLU");
+        	if(pglu != null){
+        		map.put("pglu",pglu);
+        	}
+        }
+   	    return map;
+   }
+    /** 
+     * @Title: findTheLatestHba1c 
+     * @Description: 根据会员id自动获取最新的糖化血红蛋白
+     * @param memberId
+     * @author liuxiaoqin
+     * @createDate 2016-04-28
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Map<String,Object> findTheLatestHba1c(Integer memberId)throws Exception{
+	   	Map<String,Object> map = new HashMap<String, Object>();
+	   	StringBuffer sql = new StringBuffer();
+	   	sql.append(" SELECT a.testTime,b.HBA1C FROM ( ");
+	   	sql.append(" SELECT DiabetesID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime ");
+	   	sql.append(" FROM ph_diabetes WHERE MemberID = ? AND VisitClass > 0 AND IsDeleted = 0 ORDER BY testTime DESC LIMIT 1 ");
+	   	sql.append(" )a LEFT JOIN ph_diabetesdetail b ON a.DiabetesID = b.DiabetesID ");
+	   	sql.append(" union ");
+	   	sql.append(" SELECT e.testTime,f.HBA1C FROM ( ");
+	   	sql.append(" SELECT HExamID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime ");
+	   	sql.append(" FROM ph_healthexam WHERE MemberID = ? AND IsDeleted = 0 ORDER BY testTime DESC LIMIT 1 ");
+	   	sql.append(" )e LEFT JOIN ph_healthexamdetail f ON e.HExamID = f.HExamID ");
+	   	sql.append(" order by testTime DESC LIMIT 1 ");
+	   	String finalSql = sql.toString();
+        SqlRowSet rowSet = jdbcService.query(finalSql,new Object[]{memberId,memberId});
+        while(rowSet.next()){
+        	Double hba1c = rowSet.getDouble("HBA1C");
+        	if(hba1c != null){
+        		map.put("hba1c",hba1c);
+        	}
+        }
+   	    return map;
+   }
+    
+    /** 
+     * @Title: findRecentMedication 
+     * @Description: 根据会员id自动获取用药情况 
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-04-28
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Map<String,Object> findRecentMedication(Integer memberId,String visitType)throws Exception{
+    	Map<String,Object> map = new HashMap<String, Object>();
+    	StringBuffer sql = new StringBuffer();
+    	if(visitType.equals("D")){
+    		sql.append(" (SELECT a.testTime,b.DiabetesID AS ID,CONCAT('D') AS recent FROM ( ");
+        	sql.append(" SELECT DiabetesID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime ");
+        	sql.append(" FROM ph_diabetes WHERE MemberID = ? AND VisitClass > 0 AND IsDeleted = 0 ORDER BY testTime DESC LIMIT 1 ");
+        	sql.append(" )a LEFT JOIN ph_diabetesdetailmedicine b ON a.DiabetesID = b.DiabetesID LIMIT 1) ");
+        	sql.append(" union ");
+    	}else{
+    		sql.append(" ( SELECT c.testTime,d.HypertensionID AS ID,CONCAT('H') AS recent FROM ( ");
+        	sql.append(" SELECT HypertensionID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime ");
+        	sql.append(" FROM ph_hypertension WHERE MemberID = ? AND VisitClass > 0 AND IsDeleted = 0 ORDER BY testTime DESC LIMIT 1 ");
+        	sql.append(" )c LEFT JOIN ph_hypertensiondetailmedicine d ON c.HypertensionID = d.HypertensionID LIMIT 1 ) ");
+        	sql.append(" union ");
+    	}
+    	sql.append(" (SELECT e.testTime,f.HExamID AS ID,CONCAT('E') AS recent FROM ( ");
+    	sql.append(" SELECT HExamID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime ");
+    	sql.append(" FROM ph_healthexam WHERE MemberID = ? AND IsDeleted = 0 ORDER BY testTime DESC LIMIT 1 ");
+    	sql.append(" )e LEFT JOIN ph_healthexamdetailmedicine f ON e.HExamID = f.HExamID LIMIT 1) ");
+    	sql.append(" order by testTime DESC LIMIT 1 ");
+    	String finalSql = sql.toString();
+        SqlRowSet rowSet = jdbcService.query(finalSql,new Object[]{memberId,memberId});
+        while(rowSet.next()){
+        	String recent = rowSet.getString("recent");
+        	if(!StringUtils.isEmpty(recent)){
+        		Long id = rowSet.getLong("ID");
+        		if(id != null && id >0){
+        			map.put("id",id);
+        			map.put("recent",recent);
+        		}
+        	}
+        }
+    	return map;
+    }
+    
+    /** 
+     * @Title: isOneVisitingDiabeteRecord 
+     * @Description: 实时验证该条记录是否为糖尿病待随访 
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-05-04
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer isOneVisitingDiabeteRecord(Long diabetesID)throws Exception{
+    	Integer visitClass = null;
+        String sql = " SELECT VisitClass FROM ph_diabetes WHERE DiabetesID = ? AND IsDeleted = 0 ";
+        SqlRowSet rowSet = jdbcService.query(sql,new Object[]{diabetesID});
+        while(rowSet.next()){
+        	visitClass = rowSet.getInt("VisitClass");
+        }
+        return visitClass;
+    }
+    
+    /** 
+     * @Title: isOneVisitingHyperRecord 
+     * @Description: 时验证该条记录是否为高血压待随访 
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-05-04
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer isOneVisitingHyperRecord(Long hyperID)throws Exception{
+    	Integer visitClass = null;
+        String sql = " SELECT VisitClass FROM ph_hypertension WHERE HypertensionID = ? AND IsDeleted = 0 ";
+        SqlRowSet rowSet = jdbcService.query(sql,new Object[]{hyperID});
+        while(rowSet.next()){
+        	visitClass = rowSet.getInt("VisitClass");
+        }
+        return visitClass;
+    }
+}

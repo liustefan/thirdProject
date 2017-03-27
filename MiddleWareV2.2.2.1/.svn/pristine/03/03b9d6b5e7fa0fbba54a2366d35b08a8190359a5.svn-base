@@ -1,0 +1,53 @@
+package com.zkhk.contoller;
+
+import java.io.IOException;
+import java.util.Map;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.log4j.Logger;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+
+import com.alibaba.fastjson.JSON;
+import com.zkhk.entity.CallValue;
+import com.zkhk.entity.ReturnResult;
+import com.zkhk.entity.ReturnValue;
+import com.zkhk.services.ConfigService;
+import com.zkhk.services.DocService;
+import com.zkhk.util.FileOperateUtil;
+import com.zkhk.util.GzipUtil;
+
+@Controller
+@RequestMapping("config")
+public class ConfigController {
+
+	private Logger logger = Logger.getLogger(ConfigController.class);
+	@Resource(name = "configService")
+	private ConfigService configService;
+
+
+
+	@SuppressWarnings("rawtypes")
+	@RequestMapping(value="/getConfigFile",method = RequestMethod.POST)
+	public void getConfigFile(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		try {
+			String param = request.getParameter("params");
+			CallValue call = JSON.parseObject(param, CallValue.class);
+			Map map = JSON.parseObject(call.getParam(),Map.class);
+			ReturnResult result = configService.getConfigFileByName(map.get("fileName").toString());
+			GzipUtil.write(response, JSON.toJSONString(result));
+			logger.info("获取配置文件成功。");
+		} catch (Exception e) {
+			ReturnValue re = new ReturnValue();
+			re.setState(2);
+			re.setMessage("获取配置文件失败");
+			logger.error("获取配置文件异常:"+e);
+			response.getWriter().write(JSON.toJSONString(re));
+		}
+	}
+	
+}

@@ -1,0 +1,514 @@
+
+package com.zkhk.services;
+
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.log4j.Logger;
+import org.springframework.stereotype.Service;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.hkbithealth.bean.ph.PHHealthExam;
+import com.hkbithealth.bean.ph.PHOmem;
+import com.hkbithealth.service.ph.PublicHealthService;
+import com.hkbithealth.util.CacheUtil;
+import com.zkhk.constants.Constants;
+import com.zkhk.dao.DocHealthExamDao;
+import com.zkhk.entity.CallValue;
+import com.zkhk.entity.MemDisease;
+import com.zkhk.entity.PHHealthExamParam;
+import com.zkhk.entity.ReturnResult;
+import com.zkhk.util.HealthCheckUtil;
+import com.zkhk.util.TimeUtil;
+
+@Service("docHealthExamService")
+public class DocHealthExamServiceImpl implements DocHealthExamService {
+
+	private Logger logger = Logger.getLogger(DocHealthExamServiceImpl.class);
+	
+	private PublicHealthService publicHealthService = PublicHealthService.getInstance();
+	
+	@Resource(name = "docHealthExamDao")
+    private DocHealthExamDao docHealthExamDao;
+    
+	/** 
+     * @Title: findMemHealthExamReportList 
+     * @Description: 医生查询会员的健康体检报告列表
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-17
+     * @throws Exception    
+     * @retrun String
+     */
+    @SuppressWarnings("unchecked")
+    public String findMemHealthExamReportList(HttpServletRequest request) throws Exception{
+        ReturnResult result = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        PHHealthExamParam param = JSON.parseObject(callValue.getParam(), PHHealthExamParam.class);
+        int doctorId = callValue.getMemberId();
+        if(doctorId <= 0){
+            result.setState(1);
+            result.setMessage("参数医生id【"+doctorId+"】应为正整数！");
+            logger.info("参数医生id【"+doctorId+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        int memberId = param.getMemberId();
+        if(memberId <= 0){
+            result.setState(1);
+            result.setMessage("参数memberId【"+memberId+"】应为正整数！");
+            logger.info("参数memberId【"+memberId+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        int pageNow = param.getPageNow();
+        int pageSize = param.getPageSize();
+        PHOmem omem = new PHOmem();
+        omem.setMemberid(memberId);
+        omem.setDocid(doctorId);
+        
+        List<PHHealthExam> healthExamReportList = (List<PHHealthExam>) publicHealthService.queryPhysicalPage(omem, null, null, pageNow, pageSize).getList();
+        if(healthExamReportList.size() > 0){
+            List<Map<String,Object>> examMapList = new ArrayList<Map<String,Object>>();
+            for(PHHealthExam health: healthExamReportList){
+                Map<String,Object> examMap = new HashMap<String, Object>();
+                String date = "";
+                Date examDate = health.getExamDate();
+                if(examDate != null){
+                    date = TimeUtil.formatDate(examDate);
+                }
+                examMap.put("examDate", date);
+                examMap.put("hExamID", health.getHExamID());
+                examMap.put("healthEvaluate", 0);
+                examMapList.add(examMap);
+            }
+            result.setState(0);
+            result.setMessage("医生查询会员的健康体检报告列表成功");
+            result.setContent(examMapList);
+            logger.info("医生查询会员的健康体检报告列表成功");
+        }else{
+            result.setState(3);
+            result.setMessage("没有该会员的健康体检报告列表");
+            logger.info("没有该会员的健康体检报告列表");
+        }
+        return JSON.toJSONString(result);
+    }
+    
+    /** 
+     * @Title: findMemHealthExamDetail 
+     * @Description: 医生查询会员的健康体检报告明细
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-17
+     * @throws Exception    
+     * @retrun String
+     */
+    public String findMemHealthExamDetail(HttpServletRequest request) throws Exception{
+        ReturnResult result = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        JSONObject jsonObject = JSONObject.parseObject(callValue.getParam());
+        long hExamID = jsonObject.getLong("hExamID");
+        if(hExamID <= 0){
+            result.setState(1);
+            result.setMessage("参数hExamID【"+hExamID+"】应为正整数！");
+            logger.info("参数hExamID【"+hExamID+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        PHHealthExam memHealthExamDetail = publicHealthService.queryPhysicalById(hExamID);
+        if(memHealthExamDetail.getHealthExamDetail() != null){
+            Map<String,Object> examMap = new HashMap<String, Object>();
+            examMap.put("basicInfo", HealthCheckUtil.getMemBasicInfo(memHealthExamDetail));
+            examMap.put("symptoms", HealthCheckUtil.getSymptoms(memHealthExamDetail));
+            String str  = JSON.toJSONString(examMap.get("basicInfo"));
+            JSONObject strObject = JSON.parseObject(str);
+            Integer age = strObject.getInteger("age");
+            examMap.put("generalSituation", HealthCheckUtil.getGeneralSituation(memHealthExamDetail,age));
+            examMap.put("lifeStyle", HealthCheckUtil.getLifeStyle(memHealthExamDetail));
+            examMap.put("organFunction", HealthCheckUtil.getOrganFunction(memHealthExamDetail));
+            examMap.put("examination", HealthCheckUtil.getExamination(memHealthExamDetail));
+            examMap.put("accessoryExamination", HealthCheckUtil.getAccessoryExamination(memHealthExamDetail));
+            examMap.put("tcmConstitutionIdentification", HealthCheckUtil.getTcm(memHealthExamDetail));
+            examMap.put("majorHealthProblems", HealthCheckUtil.getProblems(memHealthExamDetail));
+            examMap.put("hospitalCourse", HealthCheckUtil.getHospitalCourse(memHealthExamDetail));
+            examMap.put("medication", HealthCheckUtil.getMedication(memHealthExamDetail));
+            examMap.put("vaccination", HealthCheckUtil.getVaccination(memHealthExamDetail));
+            examMap.put("healthEvaluation", HealthCheckUtil.getHealthEvaluation(memHealthExamDetail));
+            examMap.put("healthGuidance", HealthCheckUtil.getHealthGuidance(memHealthExamDetail));
+            examMap.put("riskFactorControl", HealthCheckUtil.getRiskFactorControl(memHealthExamDetail));
+            result.setState(0);
+            result.setState(0);
+            result.setMessage("医生查询会员的健康体检报告明细成功");
+            result.setContent(examMap);
+            logger.info("医生查询会员的健康体检报告明细成功");
+        }else{
+            result.setState(3);
+            result.setMessage("没有该会员的健康体检报告明细");
+            logger.info("没有该会员的健康体检报告明细");
+        }
+        return JSON.toJSONString(result);
+    }
+    
+    /** 
+     * @Title: addOrModifyMemHealthExam 
+     * @Description: 医生新增或者修改会员的健康体检
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-17
+     * @throws Exception    
+     * @retrun String
+     */
+    public String addOrModifyMemHealthExam(HttpServletRequest request) throws Exception{
+        ReturnResult result = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        PHHealthExam param = JSON.parseObject(callValue.getParam(), PHHealthExam.class);
+        int doctorId = callValue.getMemberId();
+        if(doctorId <= 0){
+            result.setState(1);
+            result.setMessage("参数医生id【"+doctorId+"】应为正整数！");
+            logger.info("参数医生id【"+doctorId+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        int memberId = param.getMemberID();
+        if(memberId <= 0){
+            result.setState(1);
+            result.setMessage("参数memberID【"+memberId+"】应为正整数！");
+            logger.info("参数memberID【"+memberId+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        long hExamID = param.getHExamID();
+        if(hExamID <= 0){
+            result.setState(1);
+            result.setMessage("参数hExamID【"+hExamID+"】应为正整数！");
+            logger.info("参数hExamID【"+hExamID+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        boolean isSuccess = publicHealthService.addOrModifyPhysical(param);
+        if(isSuccess){
+            result.setState(0);
+            result.setMessage("医生新增或者修改会员的健康体检成功");
+            logger.info("医生新增或者修改会员的健康体检成功");
+        }else{
+            result.setState(3);
+            result.setMessage("医生新增或者修改会员的健康体检失败");
+            logger.info("医生新增或者修改会员的健康体检失败");
+        }
+        return JSON.toJSONString(result);
+    }
+    
+    /** 
+     * @Title: addMemDiseases 
+     * @Description: 医生新增会员的疾病史
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-17
+     * @throws Exception    
+     * @retrun String
+     */
+    public String addMemDiseases(HttpServletRequest request) throws Exception{
+        ReturnResult result = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        MemDisease param = JSON.parseObject(callValue.getParam(), MemDisease.class);
+        int memberId = param.getMemberId();
+        if(memberId <= 0){
+            result.setState(1);
+            result.setMessage("参数memberId【"+memberId+"】应为正整数！");
+            logger.info("参数memberId【"+memberId+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        int diseaseId = param.getDiseaseId();
+        if(diseaseId <= 0){
+            result.setState(1);
+            result.setMessage("参数diseaseId【"+diseaseId+"】应为正整数！");
+            logger.info("参数diseaseId【"+diseaseId+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        int lineNum = docHealthExamDao.findLineNum(memberId,diseaseId);
+        param.setLineNum(lineNum);
+        int hasTheDisease = docHealthExamDao.memHasTheDisease(param);
+        if(hasTheDisease == 1){
+            result.setState(4);
+            result.setMessage("该会员的这条疾病史已经存在,请重新选择！");
+            logger.info("该会员的这条疾病史已经存在,请重新选择！");
+            return JSON.toJSONString(result);
+        }else{
+            int count = docHealthExamDao.addMemDiseases(param);
+            if(count > 0){
+                result.setState(0);
+                result.setMessage("医生新增会员的疾病史成功");
+                logger.info("医生新增会员的疾病史成功");
+            }else{
+                result.setState(1);
+                result.setMessage("医生新增会员的疾病史失败");
+                logger.info("医生新增会员的疾病史失败");
+            }
+        }
+        return JSON.toJSONString(result);
+    }
+    
+    /** 
+     * @Title: deleteMemDiseases 
+     * @Description: 医生删除会员的疾病史
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-17
+     * @throws Exception    
+     * @retrun String
+     */
+    public String deleteMemDiseases(HttpServletRequest request) throws Exception{
+        ReturnResult result = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        MemDisease param = JSON.parseObject(callValue.getParam(), MemDisease.class);
+        List<MemDisease> memDiseaseList = param.getMemDiseaseList();
+        if(memDiseaseList.size() > 0){
+            for(MemDisease disease:memDiseaseList){
+                int lineNum = disease.getLineNum();
+                if(lineNum <= 0){
+                    result.setState(1);
+                    result.setMessage("参数lineNum【"+lineNum+"】应为正整数！");
+                    logger.info("参数lineNum【"+lineNum+"】应为正整数！");
+                    return JSON.toJSONString(result);
+                }
+                int memberId = disease.getMemberId();
+                if(memberId <= 0){
+                    result.setState(1);
+                    result.setMessage("参数memberId【"+memberId+"】应为正整数！");
+                    logger.info("参数memberId【"+memberId+"】应为正整数！");
+                    return JSON.toJSONString(result);
+                }
+                int diseaseId = disease.getDiseaseId();
+                if(diseaseId <= 0){
+                    result.setState(1);
+                    result.setMessage("参数diseaseId【"+diseaseId+"】应为正整数！");
+                    logger.info("参数diseaseId【"+diseaseId+"】应为正整数！");
+                    return JSON.toJSONString(result);
+                }
+                if(diseaseId == 1 || diseaseId == 2){
+                    int hasVisitRecord = docHealthExamDao.findVisitRecord(memberId,diseaseId);
+                    if(hasVisitRecord > 0){
+                        result.setState(4);
+                        result.setContent(diseaseId);
+                        result.setMessage("该会员该疾病【"+diseaseId+"】有随访记录不能删除！");
+                        logger.info("该会员该疾病【"+diseaseId+"】有随访记录不能删除！");
+                        return JSON.toJSONString(result);
+                    }
+                }
+                int count = docHealthExamDao.deleteMemDiseases(disease);
+                if(count > 0){
+                    result.setState(0);
+                    result.setMessage("医生删除会员的疾病史成功");
+                    logger.info("医生删除会员的疾病史成功");
+                }else{
+                    result.setState(1);
+                    result.setMessage("医生删除会员的疾病史失败");
+                    logger.info("医生删除会员的疾病史失败");
+                }
+            }
+        }else{
+            result.setState(1);
+            result.setMessage("参数memDiseaseList为空");
+            logger.info("参数memDiseaseList为空");
+        }
+        return JSON.toJSONString(result);
+    }
+    
+    /** 
+     * @Title: findMemHealthFile 
+     * @Description: 医生查询会员的健康档案
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-17
+     * @throws Exception    
+     * @retrun String
+     */
+    public String findMemHealthFile(HttpServletRequest request) throws Exception{
+        ReturnResult result = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        JSONObject jsonObject = JSONObject.parseObject(callValue.getParam());
+        int memberId = jsonObject.getInteger("memberId");
+        if(memberId <= 0){
+            result.setState(3);
+            result.setMessage("参数memberId【"+memberId+"】应为正整数！");
+            logger.info("参数memberId【"+memberId+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        Object healthFile = CacheUtil.getCache(Constants.HEALTH_FILE_CACHE, Constants.HEALTH_FILE_KEY);
+        if(healthFile == null){
+            Map<String,Object> map = new HashMap<String, Object>();
+            map.put("basicInfo", getMemBasicInfo(memberId));
+            map.put("emergencyContact", getMemEmergencyContact(memberId));
+            map.put("disease", getMemDiseases(memberId));
+            map.put("physicalExamination", getMemPhysicalExamination(memberId));
+            map.put("lifeStyle", getMemLifeStyle(memberId));
+            map.put("familyHistory", getMemFamilyHistory(memberId));
+            map.put("group", getMemGroup(memberId));
+            if(map.size() > 0){
+                CacheUtil.setCache(Constants.HEALTH_FILE_CACHE, Constants.HEALTH_FILE_KEY, map);
+                result.setState(0);
+                result.setContent(map);
+                result.setMessage("医生查询会员的健康档案成功");
+                logger.info("医生查询会员的健康档案成功");
+            }else{
+                result.setState(3);
+                result.setMessage("该会员没有健康档案信息");
+                logger.info("该会员没有健康档案信息");
+            }
+        }else{
+            result.setState(0);
+            result.setContent(healthFile);
+            result.setMessage("医生查询会员的健康档案成功");
+            logger.info("医生查询会员的健康档案成功");
+        }
+        return JSON.toJSONString(result);
+    }
+    
+     /** 
+     * @Title: getMemDiseases 
+     * @Description: 医生查询会员的疾病史 
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun List<MemDisease>
+     */
+    public List<MemDisease> getMemDiseases(Integer memberId)throws Exception{
+        List<MemDisease> list = docHealthExamDao.findMemDiseases(memberId);
+        if(list.size() <= 0){
+            logger.info("该会员没有疾病史");
+        }else{
+            logger.info("医生查询会员的疾病史成功！");
+        }
+        return list;
+    }
+    
+    /** 
+     * @Title: getMemFamilyHistory 
+     * @Description: 医生查询会员的家族史 
+     * @param memberId
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @return
+     * @throws Exception    
+     * @retrun List<MemDisease>
+     */
+    public List<Map<String,Object>> getMemFamilyHistory(Integer memberId)throws Exception{
+        List<Map<String,Object>> list = docHealthExamDao.getMemFamilyHistory(memberId);
+        if(list.size() <= 0){
+            logger.info("该会员没有疾病史");
+        }else{
+            logger.info("医生查询会员的疾病史成功！");
+        }
+        return list;
+    }
+    
+    /** 
+     * @Title: getMemGroup 
+     * @Description: 医生查询会员的分组 
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun List<Map<String,Object>>
+     */
+    public List<Map<String,Object>> getMemGroup(Integer memberId) throws Exception{
+        List<Map<String,Object>> map = docHealthExamDao.getMemGroup(memberId);
+        if(map.size() <= 0){
+            logger.info("该会员没有分组");
+        }else{
+            logger.info("医生查询会员的分组成功！");
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getMemEmergencyContact 
+     * @Description: 医生查询会员的紧急联系人
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public Map<String,Object> getMemEmergencyContact(Integer memberId) throws Exception{
+        Map<String,Object> map = docHealthExamDao.getMemEmergencyContact(memberId);
+        if(map.size() <= 0){
+            logger.info("该会员没有紧急联系人");
+        }else{
+            logger.info("医生查询会员的紧急联系人成功！");
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getMemLifeStyle 
+     * @Description: 医生查询会员的生活习惯
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public Map<String,Object> getMemLifeStyle(Integer memberId) throws Exception{
+        Map<String,Object> map = docHealthExamDao.getMemLifeStyle(memberId);
+        if(map.size() <= 0){
+            logger.info("该会员没有生活习惯");
+        }else{
+            logger.info("医生查询会员的生活习惯成功！");
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getMemPhysicalExamination 
+     * @Description: 医生查询会员的体格检查
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public Map<String,Object> getMemPhysicalExamination(Integer memberId) throws Exception{
+        Map<String,Object> map = docHealthExamDao.getMemPhysicalExamination(memberId);
+        if(map.size() <= 0){
+            logger.info("该会员没有体格检查!");
+        }else{
+            logger.info("医生查询会员的体格检查成功！");
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getMemBasicInfo 
+     * @Description: 医生查询会员的基本信息
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public Map<String,Object> getMemBasicInfo(Integer memberId) throws Exception{
+        Map<String,Object> map = docHealthExamDao.getMemBasicInfo(memberId);
+        if(map.size() <= 0){
+            logger.info("该会员没有基本信息!");
+        }else{
+            logger.info("医生查询会员的基本信息成功！");
+        }
+        return map;
+    }
+    
+}

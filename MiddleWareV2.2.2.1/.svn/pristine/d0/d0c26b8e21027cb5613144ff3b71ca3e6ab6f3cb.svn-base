@@ -1,0 +1,165 @@
+package com.zkhk.dao;
+
+import java.util.List;
+import java.util.Map;
+
+import com.zkhk.entity.MemDisease;
+/**
+ * @ClassName:     DocHealthExamDao.java 
+ * @Description:   健康体检
+ * @author         liuxiaoqin  
+ * @version        V1.0   
+ * @Date           2016年03月23日 下午4:13:46
+*****/
+public interface DocHealthExamDao {
+    
+    /** 
+     * @Title: findLineNum 
+     * @Description: 获取行号，新增疾病的时候需要
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer findLineNum(Integer memberId,Integer diseaseId) throws Exception;
+    
+    /** 
+     * @Title: findMaxLineNum 
+     * @Description: 获取最大行号
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer findMaxLineNum(Integer memberId) throws Exception;
+    
+    /** 
+     * @Title: addMemDiseases 
+     * @Description: 医生新增会员的疾病史
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer addMemDiseases(MemDisease param) throws Exception;
+    
+    /** 
+     * @Title: findVisitRecord 
+     * @Description: 查询会员是否有随访记录
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer findVisitRecord(Integer memberId,Integer diseaseId) throws Exception;
+    
+    /** 
+     * @Title: deleteMemDiseases 
+     * @Description: 医生删除会员的疾病史
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer deleteMemDiseases(MemDisease param) throws Exception;
+    
+    /** 
+     * @Title: memHasTheDisease 
+     * @Description: 医生查询该会员是否已经有这个疾病。
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer memHasTheDisease(MemDisease param) throws Exception;
+    
+    /** 
+     * @Title: findMemDiseases 
+     * @Description: 医生查询该会员是否已经有这个疾病。
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @throws Exception    
+     * @retrun List<MemDiseaser>
+     */
+    public List<MemDisease> findMemDiseases(Integer memberId) throws Exception;
+    
+     /** 
+     * @Title: getMemFamilyHistory 
+     * @Description: 医生查询会员的家族史 
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun List<Map<String,Object>>
+     */
+    public List<Map<String,Object>> getMemFamilyHistory(Integer memberId)throws Exception;
+    
+    /** 
+     * @Title: getMemBasicInfo 
+     * @Description: 医生查询会员的基本信息
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public Map<String,Object> getMemBasicInfo(Integer memberId) throws Exception;
+    
+    /** 
+     * @Title: getMemPhysicalExamination 
+     * @Description: 医生查询会员的体格检查
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public Map<String,Object> getMemPhysicalExamination(Integer memberId) throws Exception;
+    
+    /** 
+     * @Title: getMemLifeStyle 
+     * @Description: 医生查询会员的生活习惯
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public Map<String,Object> getMemLifeStyle(Integer memberId) throws Exception;
+    
+    /** 
+     * @Title: getMemEmergencyContact 
+     * @Description: 医生查询会员的紧急联系人
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public List<Map<String,Object>> getMemEmergencyContact(Integer memberId) throws Exception;
+    
+    /** 
+     * @Title: getMemGroup 
+     * @Description: 医生查询会员的分组 
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun List<Map<String,Object>>
+     */
+    public List<Map<String,Object>> getMemGroup(Integer memberId) throws Exception;
+    
+}

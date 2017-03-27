@@ -1,0 +1,771 @@
+package com.zkhk.dao.Impl;
+
+import java.sql.Date;
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.bson.types.ObjectId;
+import org.springframework.jdbc.InvalidResultSetAccessException;
+import org.springframework.jdbc.support.rowset.SqlRowSet;
+import org.springframework.stereotype.Repository;
+import org.springframework.util.StringUtils;
+
+import com.mongodb.gridfs.GridFSDBFile;
+import com.zkhk.dao.AnswerDao;
+import com.zkhk.entity.Mfq1;
+import com.zkhk.entity.Mfq11;
+import com.zkhk.entity.Ocam;
+import com.zkhk.entity.Ocqt;
+import com.zkhk.entity.Omfq;
+import com.zkhk.entity.Oopt;
+import com.zkhk.entity.Ouai;
+import com.zkhk.entity.AnswerParam;
+import com.zkhk.entity.Uai21;
+import com.zkhk.jdbc.JdbcService;
+import com.zkhk.mongodao.MongoEntityDao;
+import com.zkhk.util.ByteToInputStream;
+import com.zkhk.util.ImageUtils;
+import com.zkhk.util.TimeUtil;
+@Repository(value="answerDao")
+public class AnswerDaoImpl  implements AnswerDao{
+	  @Resource
+	  private JdbcService jdbcService;
+	  
+	  @Resource(name = "mongoEntityDao")
+      private MongoEntityDao mongoEntityDao;
+	  
+   //在OMFQ表中有一个字段:AnsCode ，回答方式，0：口试，1：笔试
+	public List<Ouai> findOuaiByParam(AnswerParam param) throws Exception {
+		   List<Ouai> ouais=new ArrayList<Ouai>();
+			 String sql="select a.AnsNumber,a.Qustid,a.QustTag,a.readStatus,a.PublisherTime,a.DocName ," +
+			 		    "b.qustName,c.Score,c.Conclusion from ouai a left join omfq b on a.qustId=b.qustId left OUTER JOIN uai4 c ON a.AnsNumber=c.AnsNumber  where a.memberId=? and a.publisherTime  between ? and ? and b.AnsMode=1 and not EXISTS (select 1 from cam1 f where f.AnsNumber = a.AnsNumber ) order by a.readStatus desc,a.publisherTime desc  limit ?,? ";
+				SqlRowSet rowSet=jdbcService.query(sql,new Object[]{param.getMemberId(),param.getTimeStart(),param.getTimeEnd(),(param.getPage()-1)*param.getCount(),param.getCount()});
+				while(rowSet.next()){
+		           Ouai ouai=new Ouai();
+		           ouai.setDocName(rowSet.getString("DocName"));
+		           ouai.setId(rowSet.getInt("AnsNumber"));
+		         // System.out.println(rowSet.getInt("AnsNumber")+"--------------------------");
+		           ouai.setPublisherTime(TimeUtil.paserDatetime2(rowSet.getString("PublisherTime")));
+		           ouai.setQustId(rowSet.getInt("Qustid"));
+		           ouai.setQustName(rowSet.getString("qustName"));
+		           ouai.setQustTag(rowSet.getString("QustTag"));
+		           ouai.setReadStatus(rowSet.getInt("readStatus"));
+		           //已答卷
+		           if("T".equals(rowSet.getString("QustTag"))||"C".equals(rowSet.getString("QustTag"))){
+		               ouai.setScore(rowSet.getDouble("Score"));
+			           ouai.setConclusion(rowSet.getString("Conclusion"));
+		           }
+		           //已审核
+		           if("C".equals(rowSet.getString("QustTag"))){
+		            ouai.setAuditDesc(getAuditDesc(ouai.getId()));
+		            ouai.setDiagnosis(getDiagnosis(ouai.getId()));
+		            
+		           }
+					ouais.add(ouai);
+				}
+				return ouais;
+	}
+
+	/**
+	  * @Description 获取组合答卷列表
+	  * @author liuxiaoqin
+	  * @CreateDate 2015年11月20日
+	*/
+    public List<Ocam> findOcamByParam(AnswerParam param) throws Exception {
+	    List<Ocam> ocams=new ArrayList<Ocam>();
+		String sql=" select  a.CombAnsid,a.CombQustid,a.CombQustName,a.PublisherTime ,a.CombTag,a.DocName,b.SignAddress from ocam a  LEFT JOIN odoc b ON a.Docid = b.Docid where a.memberId=? and a.publisherTime  between ? and ? order by a.publisherTime desc  limit ?,? ";
+
+		SqlRowSet rowSet=jdbcService.query(sql,new Object[]{param.getMemberId(),param.getTimeStart(),param.getTimeEnd(),(param.getPage()-1)*param.getCount(),param.getCount()});
+		while(rowSet.next()){
+            Ocam ocam=new Ocam();
+            ocam.setCombQustId(rowSet.getInt("CombQustid"));
+            ocam.setDocName(rowSet.getString("DocName"));
+            ocam.setId(rowSet.getInt("CombAnsid"));
+            ocam.setCombQustName(rowSet.getString("CombQustName"));
+            ocam.setPublisherTime(TimeUtil.paserDatetime2(rowSet.getString("PublisherTime")));
+            ocam.setRelation(getRelationValue(ocam.getId()));
+            String combTag = rowSet.getString("CombTag");
+            ocam.setCombTag(combTag);
+            if(combTag.equals("2")){
+                Ocam newOcam = getOcamAuditResult(ocam);
+                ocam.setAuditDoc(newOcam.getAuditDoc());
+                ocam.setCombAuditTime(newOcam.getCombAuditTime());
+                ocam.setAuditDesc(newOcam.getAuditDesc());
+                ocam.setCombDiagnosis(newOcam.getCombDiagnosis());
+                String signAddress =  rowSet.getString("SignAddress");
+                if(signAddress != null && !signAddress.trim().equals("")){
+                    ObjectId id = new ObjectId(signAddress);
+                    GridFSDBFile file = mongoEntityDao.retrieveFileOne("headImage",id);
+                    ocam.setAuditDocSignature(ImageUtils.encodeImgageToBase64(ByteToInputStream.input2byte(ImageUtils.resize(param.getWidth(), param.getHeight(), file.getInputStream()))));
+                }
+            }
+            ocams.add(ocam);
+		}
+		return ocams;
+	}
+    
+	/**
+	 * 获取组合问卷的审核诊断结果，医生建议
+	 * @param ocam
+	 * @throws Exception 
+	 * @throws InvalidResultSetAccessException 
+	 */
+    private Ocam getOcamAuditResult(Ocam ocam) throws Exception {
+		String sql="select o.DocName,b.AuditDesc,b.diagnosis,b.AuditTime,b.CombAnsid from  cam2 b  left join odoc o on b.docid=o.docid  where b.CombAnsid= ? order by b.AuditTime desc limit 1";
+		SqlRowSet rowSet=jdbcService.query(sql, new Object[]{ocam.getId()});
+		Ocam newOcam = new Ocam();
+		if(rowSet.next()){
+		    newOcam.setId(rowSet.getInt("CombAnsid"));
+		    newOcam.setAuditDesc(rowSet.getString("AuditDesc"));
+		    newOcam.setAuditDoc(rowSet.getString("DocName"));
+		    newOcam.setCombAuditTime(TimeUtil.paserDatetime2(rowSet.getString("AuditTime")));
+		    newOcam.setCombDiagnosis(rowSet.getString("diagnosis"));
+		}
+		return newOcam;
+	}
+
+	/**
+      * 获取组合答卷的关联值
+      * @param id
+      * @return
+      */
+	private String getRelationValue(int id) {
+		String sql="SELECT AnsNumber FROM cam1 where CombAnsid=?";
+		SqlRowSet rowSet=jdbcService.query(sql,new Object[]{id});
+		String re="";
+		while(rowSet.next()){
+			re+=rowSet.getString("AnsNumber")+",";
+			
+		}
+		if(re.length()>0){
+			return re.substring(0, re.length()-1);
+		}else {
+			return re;
+		}
+	}
+
+	/**
+	  * @Description 查询某条组合答卷包含的具体的答卷list
+	  * @author liuxiaoqin
+	  * @CreateDate 2015年11月20日
+	*/
+	public List<Ouai> findOuaiByParam2(String param) throws Exception {
+        List<Ouai> ouais = new ArrayList<Ouai>();
+		String sql = "select a.AnsNumber,a.Qustid,a.QustTag,a.readStatus,a.PublisherTime,a.DocName ,a.answerTime, " +
+			 		    "b.qustName,b.AnsMode,c.Score,c.Conclusion from ouai a left join omfq b on a.qustId=b.qustId left OUTER JOIN uai4 c ON a.AnsNumber=c.AnsNumber   where  a.AnsNumber in ("+param+")";
+		SqlRowSet rowSet = jdbcService.query(sql);
+		while(rowSet.next()){
+		    Ouai ouai=new Ouai();
+		    ouai.setDocName(rowSet.getString("DocName"));
+		    ouai.setId(rowSet.getInt("AnsNumber"));
+		    ouai.setPublisherTime(TimeUtil.paserDatetime2(rowSet.getString("PublisherTime")));
+		    ouai.setQustId(rowSet.getInt("Qustid"));
+		    ouai.setQustName(rowSet.getString("qustName"));
+		    ouai.setQustTag(rowSet.getString("QustTag"));
+		    ouai.setReadStatus(rowSet.getInt("readStatus"));
+		    ouai.setAnsMode(rowSet.getString("AnsMode"));
+		    //已答卷或者已审核
+		    if("T".equals(rowSet.getString("QustTag"))||"C".equals(rowSet.getString("QustTag"))){
+		        ouai.setScore(rowSet.getDouble("Score"));
+			    ouai.setConclusion(rowSet.getString("Conclusion"));
+			    ouai.setAnswerTime(TimeUtil.paserDatetime2(rowSet.getString("answerTime")));
+		    }
+//		    //已审核
+//		    if("C".equals(rowSet.getString("QustTag"))){
+//		        ouai.setScore(rowSet.getDouble("Score"));
+//                ouai.setConclusion(rowSet.getString("Conclusion"));
+//                ouai.setAnswerTime(TimeUtil.paserDatetime2(rowSet.getString("answerTime")));
+//		    }
+			ouais.add(ouai);
+		}
+		return ouais;
+	}
+
+	/**
+	  * @Description 获取终审医生建议
+	  * @author liuxiaoqin
+	  * @CreateDate 2015年10月13日
+	*/
+	public String getAuditDesc(int id) throws Exception{
+		String sql = "select auditDesc from uai3 where AnsNumber = ? order by AuditLevel desc LIMIT 1 ";
+		SqlRowSet rowSet=jdbcService.query(sql,new Object[]{id});
+		if(rowSet.next()){
+			return rowSet.getString("auditDesc");
+		}
+		return null;
+	}
+	
+	/**
+     * @Description 获取终审医生诊断结果
+     * @author liuxiaoqin
+     * @CreateDate 2015年10月13日
+   */
+   public String getDiagnosis(int id) throws Exception{
+       String sql = "select diagnosis from uai3 where AnsNumber = ? order by AuditLevel desc LIMIT 1 ";
+       SqlRowSet rowSet = jdbcService.query(sql,new Object[]{id});
+       if(rowSet.next()){
+           return rowSet.getString("diagnosis");
+       }
+       return null;
+   }
+
+	public Omfq findOmfqByParam(int qustId) throws Exception {
+		String sql="select QustCode,Qustname,Desription,QustVer,QustDesc from omfq where qustId=?";
+		SqlRowSet rowSet=jdbcService.query(sql,new Object[]{qustId});
+		 if(rowSet.next()){
+			 Omfq omfq=new Omfq();
+			 omfq.setDesription(rowSet.getString("Desription"));
+			 omfq.setQustCode(rowSet.getString("QustCode"));
+			 omfq.setQustDesc(rowSet.getString("QustDesc"));
+			 omfq.setQustName(rowSet.getString("Qustname"));
+			 omfq.setQustVer(rowSet.getString("QustVer"));
+			 omfq.setQustList(findMfq1ByQustId(qustId));
+			 return omfq;
+			 
+		 }
+		return null;
+	}
+
+	private List<Mfq1> findMfq1ByQustId(int qustId) {
+		String sql="select a.problemid,a.ProDesc,a.AnsType,a.Uproblemid,a.Uansid ,b.QustTypeName from mfq1 a left join otqi  b on a.QustTypeId=b.QustTypeid where QustId=?";
+		List<Mfq1> list=new ArrayList<Mfq1>();
+		
+		SqlRowSet rowSet=jdbcService.query(sql, new Object[]{qustId});
+		while(rowSet.next()){
+			Mfq1 mfq1=new Mfq1();
+			
+			mfq1.setAnsType(rowSet.getString("AnsType"));
+			mfq1.setId(rowSet.getInt("problemid"));
+			mfq1.setProDes(rowSet.getString("ProDesc"));
+			mfq1.setQustClass(rowSet.getString("QustTypeName"));
+			mfq1.setUansid(rowSet.getInt("Uansid"));
+			mfq1.setUproblemId(rowSet.getInt("Uproblemid"));
+			mfq1.setAnserList(findMfq11byProblemId(mfq1.getId(),qustId));
+			mfq1.setAnsNum(mfq1.getAnserList().size());		
+			list.add(mfq1);
+		}
+		
+		return list;
+	}
+    /**
+     * 获取问题答案对象
+     * @param id
+     * @return
+     */
+	private List<Mfq11> findMfq11byProblemId(int id,int qustId ) {
+		
+		String sql="select m.Ansid,m.Description,m.Mark,m.Fillblank,m.FillTag,l.problemIds from mfq11 m LEFT JOIN logics l "
+				 + "on l.questId = m.Qustid and l.problemId = m.Problemid and l.answerId = m.Ansid  where m.Problemid=? and m.qustId=?";
+		List<Mfq11> list=new ArrayList<Mfq11>();
+		
+		SqlRowSet rowSet=jdbcService.query(sql, new Object[]{id,qustId});
+		while(rowSet.next()){
+			Mfq11 mfq11=new Mfq11();
+			mfq11.setAnsId(rowSet.getInt("Ansid"));
+			mfq11.setDescription(rowSet.getString("Description"));
+			mfq11.setFillBlank(rowSet.getString("Fillblank"));
+			mfq11.setMark(rowSet.getString("Mark"));
+			mfq11.setFillTag(rowSet.getString("FillTag"));
+			mfq11.setProblemId(id);	
+			mfq11.setRelatedIds(rowSet.getString("problemIds"));
+			list.add(mfq11);
+		}
+		
+		return list;
+	}
+
+	public List<Mfq11> findResultByParam(int ansNumber) throws Exception {
+		String sql="select Problemid,Ansid,Fillblank,Score from uai21 where  AnsNumber=?";
+		List<Mfq11> list=new ArrayList<Mfq11>();		
+		SqlRowSet rowSet=jdbcService.query(sql, new Object[]{ansNumber});
+		while(rowSet.next()){
+			Mfq11 mfq11=new Mfq11();
+			mfq11.setAnsId(rowSet.getInt("Ansid"));
+			mfq11.setFillBlank(rowSet.getString("Fillblank"));
+			mfq11.setProblemId(rowSet.getInt("Problemid"));	
+			mfq11.setAnswerScore(rowSet.getDouble("Score"));
+			list.add(mfq11);
+		}	
+		return list;
+	}
+
+	public void saveUai21ByParam(List<Uai21> list,String qustTag)throws Exception {
+		 List<String> sqlList=new ArrayList<String>();
+		 String sql=null;
+		 for(Uai21 u:list){
+			 if(u.getFillblank()==null||"".equals(u.getFillblank())){
+				 sql="INSERT INTO uai21 ( AnsNumber ,Problemid ,Ansid ,Score ) VALUES ("+u.getAnsNumber()+","+u.getProblemId()+","+u.getAnsId()+","+u.getScore()+") ON DUPLICATE KEY UPDATE Score="+u.getScore();
+			 }else {
+				 sql="INSERT INTO uai21 ( Score,AnsNumber ,Problemid ,Ansid ,Fillblank ) VALUES ("+u.getScore()+","+u.getAnsNumber()+","+u.getProblemId()+","+u.getAnsId()+",'"+u.getFillblank()+"') ON DUPLICATE KEY UPDATE Fillblank=" +"'"+ u.getFillblank()+"'";
+			}
+			  sqlList.add(sql);
+		 }
+		 String answerTime = TimeUtil.formatDatetime2(new java.util.Date());
+		 sql="update ouai set qustTag='"+qustTag+"', answerTime='"+answerTime+"' where ansNumber="+list.get(0).getAnsNumber();
+		 sqlList.add(sql);
+		 jdbcService.batchUpdate(sqlList);
+ 		
+	}
+
+	/**
+	  * @Description 获取答卷总分，并保存每题的分值到uai21中。
+	  * @author liuxiaoqin
+	  * @CreateDate 2015年11月20日
+	*/
+	public double getScore(List<Uai21> list) throws Exception {
+		String sql;
+		double totalScore = 0L;
+		for(Uai21 u:list){
+			sql="select Score from mfq11 where Qustid =? and Problemid=? and Ansid=?";					
+			SqlRowSet rowSet = jdbcService.query(sql, new Object[]{u.getQustId(),u.getProblemId(),u.getAnsId()});
+			if(rowSet.next()){
+			    double score = rowSet.getDouble("Score");
+			    //保存每题的答题分值
+			    addScoreToUai21(u.getAnsNumber(),u.getProblemId(),u.getAnsId(),score);
+				totalScore += score;
+			}
+		}
+		return totalScore;
+	}
+	
+	/**
+     * @Description 保存每题的分值到uai21中。
+     * @author liuxiaoqin
+     * @CreateDate 2015年11月20日
+    */
+    public void addScoreToUai21(int ansNumber,int problemId,int ansId,double score) throws Exception
+    {
+        String sql = " update uai21 set Score = ? where ansNumber = ? and Problemid=? and Ansid=? ";                  
+        jdbcService.doExecuteSQL(sql, new Object[]{score,ansNumber,problemId,ansId});
+    }
+
+	public String getResultByQustIdAndScore(int qustId, double totalScore)throws Exception {
+		String sql="select conclusion from mfq21 where qustId=? and MinScore<=? and MaxScore>=?";
+		SqlRowSet rowSet=jdbcService.query(sql, new Object[]{qustId,totalScore,totalScore});
+		if(rowSet.next()){
+			return rowSet.getString("conclusion");
+		}
+		return "查询不到相应的结果";
+	}
+
+	public void saveOuai4(int ansNumber, double totalScore,String result) throws Exception {
+		String checkSql = " SELECT * FROM uai4 WHERE AnsNumber = ? ";
+		SqlRowSet rowSet = jdbcService.query(checkSql, new Object[]{ansNumber});
+		if(rowSet.next()){
+		    String updateSql = " UPDATE uai4 SET Score = ?, Conclusion = ? WHERE AnsNumber = ? ";
+		    jdbcService.doExecuteSQL(updateSql,new Object[]{totalScore ,result,ansNumber});
+		}else{
+		    String insertSql = " INSERT uai4(AnsNumber,lineNum,Score,Conclusion) VALUES(?,?,?,?) ";
+		    jdbcService.doExecuteSQL(insertSql,new Object[]{ansNumber,1,totalScore ,result});
+		}	
+	}
+
+	/**
+	  * @Description 判断组合答卷的每个单份答卷是否都已经答完
+	  * @author liuxiaoqin
+	  * @CreateDate 2015年11月23日
+	*/
+	public boolean findisFinish(String relation) throws Exception {
+		String sql = " SELECT 1 from ouai WHERE AnsNumber in ("+relation+") AND (QustTag='F' OR QustTag='B') ";
+		SqlRowSet rowSet=jdbcService.query(sql);
+		if(rowSet.next()){
+			return false;	
+		}
+		return true;
+	}
+
+	/**
+	  * @Description 修改组合答卷状态为已作答或者作答中
+	  * @author liuxiaoqin
+	  * @CreateDate 2015年11月19日
+	*/
+	public void updateOcamStatusById(int combAnsId,String combTag) throws Exception {
+	    String answerTime = TimeUtil.formatDatetime2(new java.util.Date());
+		String sql="update ocam  set combTag = '"+combTag+"', answerTime='"+answerTime+"' where combAnsid=? ";
+		jdbcService.doExecuteSQL(sql, new Object[]{combAnsId});
+		
+	}
+	
+	public Omfq findOmfqByParam2(int qustId) throws Exception {
+		String sql="select optId,orgId,FunId from omfq where qustId=?";
+		SqlRowSet rowSet=jdbcService.query(sql,new Object[]{qustId});
+		 if(rowSet.next()){
+			 Omfq omfq=new Omfq();
+			 omfq.setOptId(rowSet.getInt("optId"));
+			 omfq.setOrgId(rowSet.getInt("orgId"));
+			 omfq.setFunId(rowSet.getInt("FunId"));
+			 return omfq;
+		 }
+		return null;
+	}
+
+	public Date findQustCreateTimeByQustId(int qustId) throws Exception {
+		String sql="select createDate from mfq1 where qustId=? limit 1";
+		SqlRowSet rowSet=jdbcService.query(sql, new Object[]{qustId});
+		if(rowSet.next()){
+			Date date=rowSet.getDate("createDate");
+			return date;
+		}
+		return null;
+	}
+
+	/**
+	  * @Description 根据组合问卷id来查找组合问卷详细信息
+	  * @author liuxiaoqin
+	  * @CreateDate 2015年11月19日
+	*/
+	public Ocqt findCombQustByQustId(int combQustId) throws Exception {
+        String sql = " SELECT * FROM ocqt WHERE CombQustid = ? ";
+        SqlRowSet rowSet = jdbcService.query(sql,new Object[]{combQustId});
+         if(rowSet.next()){
+             Ocqt combQust = new Ocqt();
+             combQust.setCombQustId(rowSet.getInt("CombQustid"));
+             combQust.setCombQustDesc(rowSet.getString("CombDesc"));
+             combQust.setCombQustCode(rowSet.getInt("CombQustCode"));
+             combQust.setCombQustName(rowSet.getString("CombQustName"));
+             combQust.setChTag(rowSet.getString("ChTag"));
+             combQust.setCreateDate(TimeUtil.formatDate(TimeUtil.parseDate(rowSet.getString("CreateDate"))));
+             combQust.setCreateId(rowSet.getInt("Createid"));
+             combQust.setCreateName(rowSet.getString("CreateDate"));
+             combQust.setOptId(rowSet.getInt("optId"));
+             combQust.setOrgId(rowSet.getInt("orgId"));
+             combQust.setQustTag(rowSet.getString("QustTag"));
+             combQust.setQustVer(rowSet.getString("qustVer"));
+             return combQust;
+         }
+        return null;
+    }
+
+	public void pro_fromOUAIinsOASR(int orgId, int ansId, int memberId,
+			int optId, Date date) {
+		 //调用存储过程
+		String sql="{call pro_fromOUAIinsOASR(?,?,?,?,?)}";
+        jdbcService.doExecuteSQL(sql, new Object[]{orgId,ansId,memberId,optId,date});
+		
+	}
+	
+	/**
+	  * @Description 组合答卷的存储过程
+	  * @author liuxiaoqin
+	  * @CreateDate 2015年11月19日
+	*/
+	public void pro_fromOCAMinsOASR(int combAnsNumber, int memberId, Date publisherTime,int orgId,int optId)
+	{
+         //调用存储过程
+        String sql="{call pro_fromOCAMinsOASR(?,?,?,?,?)}";
+        jdbcService.doExecuteSQL(sql, new Object[]{combAnsNumber,memberId,publisherTime,orgId,optId});
+    }
+	
+	/**
+     * @Description 查询会员的单份答卷：(已答和未答)
+     * @author liuxiaoqin
+     * @CreateDate 2015年10月12日
+   */
+   public List<Ouai> findMemSingleAnswer(AnswerParam param) throws Exception
+   {
+       List<Ouai> ouais = new ArrayList<Ouai>();
+       String hasAnswerd = param.getHasAnswerd();
+       String sql = "";
+       if(hasAnswerd.equals("F"))
+       {
+           sql = " SELECT a.AnsNumber,a.answerTime,a.readStatus,a.Memberid,a.PublisherTime,a.Qustid,a.QustTag,a.DocName,b.Qustname,b.AnsMode FROM ouai a LEFT JOIN omfq b ON a.qustId = b.qustId LEFT OUTER JOIN uai4 c "
+                   + " ON a.AnsNumber = c.AnsNumber WHERE a.memberId = ? AND b.AnsMode = '1' AND NOT EXISTS (SELECT 1 FROM cam1 f WHERE f.AnsNumber = a.AnsNumber) AND (a.QustTag = 'F' OR a.QustTag = 'B') ORDER BY a.publisherTime DESC LIMIT ?,? ";
+       }
+       else
+       {
+           sql = " SELECT a.AnsNumber,a.answerTime,a.readStatus,a.Memberid,a.PublisherTime,a.Qustid,a.QustTag,a.DocName,b.Qustname,b.AnsMode FROM ouai a LEFT JOIN omfq b ON a.qustId = b.qustId LEFT OUTER JOIN uai4 c "
+                   + " ON a.AnsNumber = c.AnsNumber WHERE a.memberId = ? AND NOT EXISTS (SELECT 1 FROM cam1 f WHERE f.AnsNumber = a.AnsNumber) AND (a.QustTag = 'T' OR a.QustTag = 'C') ORDER BY a.readStatus DESC,a.publisherTime DESC LIMIT ?,? ";
+       }
+       SqlRowSet rowSet = jdbcService.query(sql,new Object[]{param.getMemberId(),(param.getPage()-1)*param.getCount(),param.getCount()});
+       while(rowSet.next())
+       {
+           Ouai ouai=new Ouai();
+           ouai.setId(rowSet.getInt("AnsNumber"));
+           ouai.setPublisherTime(TimeUtil.paserDatetime2(rowSet.getString("PublisherTime")));
+           ouai.setQustId(rowSet.getInt("Qustid"));
+           ouai.setQustName(rowSet.getString("Qustname"));
+           ouai.setQustTag(rowSet.getString("QustTag"));
+           ouai.setReadStatus(rowSet.getInt("readStatus"));
+           ouai.setDocName(rowSet.getString("DocName"));
+           ouai.setAnsMode(rowSet.getString("AnsMode"));
+           ouais.add(ouai);
+           
+       }
+       return ouais;
+    }
+   
+    
+    /**
+      * @Description 获取会员单份答卷总得分，结论和审核建议(已审核)
+      * @author liuxiaoqin
+      * @CreateDate 2015年10月13日
+    */
+    public Ouai findMemSingleAnswerSummary(Integer ansNumber) throws Exception
+    {
+        String sql = " select a.*,b.Qustname from ouai a left join omfq b on a.Qustid = b.Qustid where a.AnsNumber = ? ";
+        SqlRowSet rowSet = jdbcService.query(sql,new Object[]{ansNumber});
+        Ouai newOuai = null;
+        while(rowSet.next())
+        {
+            Ouai ouai=new Ouai();
+            ouai.setId(rowSet.getInt("AnsNumber"));
+            ouai.setPublisherTime(TimeUtil.paserDatetime2(rowSet.getString("PublisherTime")));
+            ouai.setQustId(rowSet.getInt("Qustid"));
+            ouai.setQustName(rowSet.getString("Qustname"));
+            ouai.setQustTag(rowSet.getString("QustTag"));
+            ouai.setReadStatus(rowSet.getInt("readStatus"));
+            ouai.setDocName(rowSet.getString("DocName"));
+            ouai.sethExamID(rowSet.getLong("HExamID"));
+            ouai.setAnswerTime(TimeUtil.paserDatetime2(rowSet.getString("answerTime")));
+            newOuai = ouai;
+        }
+        return newOuai;
+    }
+	
+    /**
+      * @Description 更新已审核的会员答卷为已读("0")
+      * @author liuxiaoqin
+      * @CreateDate 2015年10月13日
+    */
+    public Integer updateMemSingleAnswerHasApproved(Integer ansNumber) throws Exception
+    {
+        int count = 0;
+        String sql = " update ouai set readStatus = 0 where AnsNumber = ? ";
+        count = jdbcService.doExecuteSQL(sql, new Object[]{ansNumber});
+        return count;
+    }
+    
+    /**
+     * @Description 根据答卷id会员已答单份答卷的答案
+     * @author liuxiaoqin
+     * @CreateDate 2015年10月13日
+    */
+    public List<Uai21> findMemSingleAnswerDetail(Integer ansNumber)throws Exception
+    {
+        List<Uai21> uai21s = new ArrayList<Uai21>();
+        String sql = " select * from uai21 where AnsNumber = ? ";
+        SqlRowSet rowSet = jdbcService.query(sql,new Object[]{ansNumber});
+        while(rowSet.next())
+        {
+            Uai21 uai21 = new Uai21();
+            uai21.setAnsNumber(rowSet.getInt("AnsNumber"));
+            uai21.setProblemId(rowSet.getInt("Problemid"));
+            uai21.setAnsId(rowSet.getInt("Ansid"));
+            uai21.setScore(rowSet.getDouble("Score"));
+            uai21.setFillblank(rowSet.getString("Fillblank"));
+            uai21s.add(uai21);
+        }
+        return uai21s;
+    }
+    
+    /**
+     * @Description 获取单份问卷的所有题目
+     * @author liuxiaoqin
+     * @CreateDate 2015年10月13日
+    */
+    public List<Mfq1> findMemSingleQustAllTitle(Integer qustId)throws Exception
+    {
+        List<Mfq1> mfq1s = new ArrayList<Mfq1>();
+        String sql = " select * from mfq1 where Qustid = ? order by Problemid ";
+        SqlRowSet rowSet = jdbcService.query(sql,new Object[]{qustId});
+        while(rowSet.next())
+        {
+            Mfq1 mfq1 = new Mfq1();
+            mfq1.setProDes(rowSet.getString("ProDesc"));
+            mfq1.setId(rowSet.getInt("Problemid"));
+            mfq1.setAnsType(rowSet.getString("AnsType"));
+            mfq1s.add(mfq1);
+        }
+        return mfq1s;
+    }
+   
+    /**
+     * @Description 每个题目的选项
+     * @author liuxiaoqin
+     * @CreateDate 2015年10月13日
+    */
+    public List<Mfq11> findMemSingleQustTitleOption(Integer qustId, Integer titleId)throws Exception
+    {
+        List<Mfq11> mfq11s = new ArrayList<Mfq11>();
+        String sql = " select * from mfq11 where Qustid = ?  and Problemid = ? order by Ansid ";
+        SqlRowSet rowSet = jdbcService.query(sql,new Object[]{qustId,titleId});
+        while(rowSet.next())
+        {
+            Mfq11 mfq11 = new Mfq11();
+            mfq11.setAnsId(rowSet.getInt("Ansid"));
+            mfq11.setDescription(rowSet.getString("Description"));
+            mfq11.setFillBlank(rowSet.getString("Fillblank"));
+            mfq11.setMark(rowSet.getString("Mark"));
+            mfq11.setFillTag(rowSet.getString("FillTag"));
+            mfq11.setProblemId(rowSet.getInt("Problemid"));
+            mfq11s.add(mfq11);
+        }
+        return mfq11s;
+    }
+    
+    /**
+     * @Description 删除会员第一次暂存的答案
+     * @author liuxiaoqin
+     * @CreateDate 2015年10月13日
+    */
+    public void deleteMemSingleQustFristDraft(Integer ansNumber)throws Exception
+    {
+        String sql = " delete from uai21 where AnsNumber = ? ";
+        jdbcService.doExecuteSQL(sql, new Object[]{ansNumber});
+    }
+    
+    /**
+      * @Description 获取会员单份答卷的总分与结论。
+      * @author liuxiaoqin
+      * @CreateDate 2015年11月9日
+    */
+    public Ouai getSingleAnsScoreAndConclusion(Integer ansNumber) throws Exception{
+        String sql = " select AnsNumber, Score,Conclusion from uai4 where AnsNumber = ? ";
+        SqlRowSet rowSet = jdbcService.query(sql,new Object[]{ansNumber});
+        Ouai newOuai = null;
+        while(rowSet.next())
+        {
+            Ouai ouai = new Ouai();
+            ouai.setId(rowSet.getInt("AnsNumber"));
+            ouai.setScore(rowSet.getDouble("Score"));
+            ouai.setConclusion(rowSet.getString("Conclusion"));
+            newOuai = ouai;
+        }
+        return newOuai;
+    }
+    
+    /**
+     * @Description 获取终审一审的建议，诊断结果，审核时间。
+     * @author liuxiaoqin
+     * @CreateDate 2015年11月9日
+    */
+    public Ouai getSingleAnsDocAdviceAndTime(Integer ansNumber,AnswerParam param) throws Exception{
+        String sql = " SELECT a.*, b.DocName,b.SignAddress FROM uai3 a, odoc b WHERE a.Docid = b.Docid AND a.AnsNumber = ? order by a.AuditLevel DESC LIMIT 1 ";
+        SqlRowSet rowSet = jdbcService.query(sql,new Object[]{ansNumber});
+        Ouai newOuai = null;
+        while(rowSet.next())
+        {
+            Ouai ouai = new Ouai();
+            ouai.setId(rowSet.getInt("AnsNumber"));
+            ouai.setAuditTime(TimeUtil.paserDatetime2(rowSet.getString("AuditTime")));
+            ouai.setDiagnosis(rowSet.getString("diagnosis"));
+            ouai.setAuditDesc(rowSet.getString("AuditDesc"));
+            ouai.setAuditDocName(rowSet.getString("DocName"));
+            String signAddress =  rowSet.getString("SignAddress");
+            if(signAddress != null && !signAddress.trim().equals("")){
+                ObjectId id = new ObjectId(signAddress);
+                GridFSDBFile file = mongoEntityDao.retrieveFileOne("headImage",id);
+                ouai.setAuditDocSignature(ImageUtils.encodeImgageToBase64(ByteToInputStream.input2byte(ImageUtils.resize(param.getWidth(), param.getHeight(), file.getInputStream()))));
+            }
+            newOuai = ouai;
+        }
+        return newOuai;
+    }
+    
+    /**
+      * @Description 获取序列号
+      * @author liuxiaoqin
+      * @CreateDate 2015年11月30日
+    */
+    public synchronized long getSerialNumber(){
+        String sql = "INSERT INTO oasr_serialnumber VALUES()";
+        jdbcService.doExecute2(sql);
+        long id = jdbcService.getMaxId("oasr_serialnumber", "serialNumber");
+        return id;
+    }
+    
+    /**
+      * @Description 提交单份答卷
+      * @author liuxiaoqin
+      * @CreateDate 2015年11月30日
+    */
+    public void submitSingleAnswer(int ansNumber,int optId, String optName,int memberId,String answerType) throws Exception{
+        long id = getSerialNumber();
+        java.util.Date datetime = new java.util.Date();
+        java.sql.Timestamp createDate = new java.sql.Timestamp(datetime.getTime());
+        String sql = "";
+        if(!StringUtils.isEmpty(answerType) && answerType.equals("exam")){
+        	sql = " INSERT INTO oasr_"+id%100+"(serialNumber,ReportNo,OptId,OptName,Memberid,DocGrpCode,TempCode,MeasTime,MeasTermTime,MeasNum,GrenerTime,AuditLevel,AuditState,SubmitOther,YNTag,Docid,AuditDatetime) "
+                    +" VALUES(?,?,?,?,?,null,null,null,null,null,?,1,'Y','N','Y',null,null) ";
+        }else{
+        	sql = " INSERT INTO oasr_"+id%100+"(serialNumber,ReportNo,OptId,OptName,Memberid,DocGrpCode,TempCode,MeasTime,MeasTermTime,MeasNum,GrenerTime,AuditLevel,AuditState,SubmitOther,YNTag,Docid,AuditDatetime) "
+                    +" VALUES(?,?,?,?,?,null,null,null,null,null,?,1,'N','N','Y',null,null) ";
+        }
+        jdbcService.doExecuteSQL(sql, new Object[]{id,ansNumber,optId,optName,memberId,createDate});
+    }
+    
+    /**
+     * @Description 提交组合答卷
+     * @author liuxiaoqin
+     * @CreateDate 2015年11月30日
+    */
+    public void submitCombAnswer(int combAnsId,int optId, String optName,int memberId) throws Exception{
+        long id = getSerialNumber();
+        java.util.Date datetime = new java.util.Date();
+        java.sql.Timestamp createDate = new java.sql.Timestamp(datetime.getTime());
+        String sql = " INSERT INTO oasr_"+id%100+"(serialNumber,ReportNo,OptId,OptName,Memberid,DocGrpCode,TempCode,MeasTime,MeasTermTime,MeasNum,GrenerTime,AuditLevel,AuditState,SubmitOther,YNTag,Docid,AuditDatetime) "
+               +" VALUES(?,?,?,?,?,null,null,null,null,null,?,1,'N','N','Y',null,null) ";
+        jdbcService.doExecuteSQL(sql, new Object[]{id,combAnsId,optId,optName,memberId,createDate});
+    }
+    
+    /**
+     * @Description 根据单份问卷id获取oopt
+     * @author liuxiaoqin
+     * @CreateDate 2015年11月30日
+    */
+    public Oopt findOoptBySingleQustId(int qustId) throws Exception{
+        String sql = " SELECT b.* FROM omfq a JOIN oopt b ON a.OptId = b.OptId WHERE a.Qustid = ? ";
+        SqlRowSet rowSet = jdbcService.query(sql,new Object[]{qustId});
+        Oopt oopt = null;
+        while(rowSet.next())
+        {
+            Oopt newOopt = new Oopt();
+            newOopt.setId(rowSet.getInt("OptId"));
+            newOopt.setOptName(rowSet.getString("OptName"));
+            oopt = newOopt;
+        }
+        return oopt;
+    }
+    
+    /**
+     * @Description 根据组合问卷id获取oopt
+     * @author liuxiaoqin
+     * @CreateDate 2015年11月30日
+    */
+    public Oopt findOoptByCombQustId(int combQustId) throws Exception{
+        String sql = " SELECT b.* FROM ocqt a JOIN oopt b ON a.OptId = b.OptId WHERE a.CombQustid = ? ";
+        SqlRowSet rowSet = jdbcService.query(sql,new Object[]{combQustId});
+        Oopt oopt = null;
+        while(rowSet.next())
+        {
+            Oopt newOopt = new Oopt();
+            newOopt.setId(rowSet.getInt("OptId"));
+            newOopt.setOptName(rowSet.getString("OptName"));
+            oopt = newOopt;
+        }
+        return oopt;
+    }
+    
+    /** 
+     * @Title: addNewAnswer 
+     * @Description: 新增答卷
+     * @author liuxiaoqin
+     * @createDate 2016-05-26 
+     * @param ouai
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer addNewAnswer(Ouai ouai) throws Exception{
+    	Integer id = 0;
+    	String nowTime = TimeUtil.formatDatetime2(new java.util.Date());
+		String sql = " INSERT INTO ouai(Memberid,Qustid,ChTag,QustTag,PublisherTime,FailureTime,"
+				   + "FunId,OptId,Docid,DocName,answerTime,HExamID) VALUES (?,?,'N','T',?,?,?,?,?,?,?,?) ";
+		id = jdbcService.doExecuteSQLReturnId(sql, new Object[]{ouai.getMemberid(),ouai.getQustId(),nowTime,nowTime,
+				ouai.getFunId(),ouai.getOptId(),ouai.getDoctorId(),ouai.getDocName(),nowTime,ouai.gethExamID()},
+				"ouai","AnsNumber");
+    	return id;
+    }
+    
+}

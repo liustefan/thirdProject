@@ -1,0 +1,9 @@
+#驱动包
+mysql.driverClass=com.mysql.jdbc.Driver
+#mysql.jdbcUrl=jdbc:mysql://121.201.32.169:3306/dshktest?useUnicode=true&characterEncoding=UTF-8
+#链接字符
+mysql.jdbcUrl=jdbc:mysql://192.168.10.27:3306/zkhk203?useUnicode=true&characterEncoding=UTF-8
+#用户名
+mysql.user=root
+#密码
+mysql.password=zkhk2014

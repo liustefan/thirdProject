@@ -1,0 +1,315 @@
+package com.zkhk.dao.Impl;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+import org.springframework.jdbc.support.rowset.SqlRowSet;
+import org.springframework.stereotype.Repository;
+import com.zkhk.dao.DocHealthExamDao;
+import com.zkhk.entity.MemDisease;
+import com.zkhk.jdbc.JdbcService;
+import com.zkhk.util.TimeUtil;
+
+/**
+ * @ClassName:     DocHealthExamDaoImpl.java 
+ * @Description:   健康体检
+ * @author         liuxiaoqin  
+ * @version        V1.0   
+ * @Date           2016年03月23日 下午4:13:46
+*****/
+@Repository(value="docHealthExamDao")
+public class DocHealthExamDaoImpl implements DocHealthExamDao{
+    
+    @Resource
+    private JdbcService jdbcService;
+    
+    /** 
+     * @Title: memHasTheDisease 
+     * @Description: 医生查询该会员是否已经有这个疾病。
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer memHasTheDisease(MemDisease param) throws Exception{
+        int count = 0;
+        String sql = " SELECT COUNT(Memberid) FROM mem3 where DiseaseID = ? AND Memberid = ? AND LineNum = ? ";
+        count = jdbcService.doExecuteSQL(sql, new Object[]{param.getDiseaseId(),param.getMemberId(),param.getLineNum()});
+        return count;
+    }
+    
+    /** 
+     * @Title: addMemDiseases 
+     * @Description: 医生新增会员的疾病史
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer addMemDiseases(MemDisease param) throws Exception{
+        int count = 0;
+        String sql = " INSERT INTO mem3 (Memberid,LineNum,DiseaseID,DiseaseName,DiagTime,CreateTime) VALUES(?,?,?,?,?,NOW()) ";
+        count = jdbcService.doExecuteSQL(sql, new Object[]{param.getMemberId(),param.getLineNum(),param.getDiseaseId(),param.getDiseaseName(),param.getDiagTime()});
+        return count;
+    }
+    
+    /** 
+     * @Title: modifyMemDiseases 
+     * @Description: 医生修改会员的疾病史
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer modifyMemDiseases(MemDisease param) throws Exception{
+        int count = 0;
+        String sql = "";
+        return count;
+    }
+    
+    /** 
+     * @Title: deleteMemDiseases 
+     * @Description: 医生删除会员的疾病史
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer deleteMemDiseases(MemDisease param) throws Exception{
+        int count = 0;
+        String sql = " DELETE FROM mem3 WHERE Memberid = ? AND LineNum = ? AND DiseaseID = ? ";
+        count = jdbcService.doExecuteSQL(sql, new Object[]{param.getMemberId(),param.getLineNum(),param.getDiseaseId()});
+        return count;
+    }
+    
+    /** 
+     * @Title: findMemDiseases 
+     * @Description: 医生查询该会员是否已经有这个疾病。
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @throws Exception    
+     * @retrun List<MemDiseaser>
+     */
+    public List<MemDisease> findMemDiseases(Integer memberId) throws Exception{
+        List<MemDisease> list = new ArrayList<MemDisease>();
+        String sql = " SELECT Memberid,LineNum,DiseaseID,DiseaseName,DiagTime FROM mem3 WHERE Memberid = ? ORDER BY DiagTime DESC ";
+        SqlRowSet rowSet = jdbcService.query(sql, new Object[]{memberId});
+        while(rowSet.next()) {
+            MemDisease disease = new MemDisease();
+            disease.setMemberId(memberId);
+            disease.setLineNum(rowSet.getInt("LineNum"));
+            disease.setDiseaseId(rowSet.getInt("DiseaseID"));
+            disease.setDiseaseName(rowSet.getString("DiseaseName"));
+            Date date = rowSet.getDate("DiagTime");
+            if(date != null){
+                String diagTime = TimeUtil.formatDate(date);
+                disease.setDiagTime(diagTime);
+            }
+            list.add(disease);
+        }
+        return list;
+    }
+    
+    /** 
+     * @Title: getMemFamilyHistory 
+     * @Description: 医生查询会员的家族史 
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun List<Map<String,Object>>
+     */
+    public List<Map<String,Object>> getMemFamilyHistory(Integer memberId) throws Exception{
+        List<Map<String,Object>> map = new ArrayList<Map<String,Object>>();
+        String sql = " SELECT Memberid,Relation,DiseaseName FROM mem4 WHERE Memberid = ? ";
+        SqlRowSet rowSet = jdbcService.query(sql, new Object[]{memberId});
+        while(rowSet.next()) {
+            Map<String,Object> newMap = new HashMap<String, Object>();
+            newMap.put("memberId", rowSet.getInt("Memberid"));
+            newMap.put("relation", rowSet.getString("Relation"));
+            newMap.put("diseaseName", rowSet.getString("DiseaseName"));
+            map.add(newMap);
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getMemGroup 
+     * @Description: 医生查询会员的分组 
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun List<Map<String,Object>>
+     */
+    public List<Map<String,Object>> getMemGroup(Integer memberId) throws Exception{
+        List<Map<String,Object>> map = new ArrayList<Map<String,Object>>();
+        String sql = " SELECT e.Memberid,e.MemGrpid,f.MemGrpName,f.MemGrpDesc FROM ompb e LEFT JOIN omgs f ON e.MemGrpid = f.MemGrpid where e.Memberid = ? ORDER BY e.MemGrpid DESC ";
+        SqlRowSet rowSet = jdbcService.query(sql, new Object[]{memberId});
+        while(rowSet.next()) {
+            Map<String,Object> newMap = new HashMap<String, Object>();
+            newMap.put("memberId", rowSet.getInt("Memberid"));
+            newMap.put("memGrpName", rowSet.getString("MemGrpName"));
+            newMap.put("memGrpDesc", rowSet.getString("MemGrpDesc"));
+            map.add(newMap);
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getMemEmergencyContact 
+     * @Description: 医生查询会员的紧急联系人
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public Map<String,Object> getMemEmergencyContact(Integer memberId) throws Exception{
+        Map<String,Object> map = new HashMap<String,Object>();
+        String sql = " SELECT DISTINCT Memberid,Relation,ContactName,ContactMobPhone,MessageTag,ReceiveTag FROM mem1 WHERE Memberid = ? ";
+        SqlRowSet rowSet = jdbcService.query(sql, new Object[]{memberId});
+        while(rowSet.next()) {
+            map.put("memberId", rowSet.getInt("Memberid"));
+            map.put("contactName", rowSet.getString("ContactName"));
+            map.put("contactMobPhone", rowSet.getString("ContactMobPhone"));
+            map.put("relation", rowSet.getString("Relation"));
+            map.put("messageTag", rowSet.getString("MessageTag"));
+            map.put("receiveTag", rowSet.getString("ReceiveTag"));
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getMemLifeStyle 
+     * @Description: 医生查询会员的生活习惯
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public Map<String,Object> getMemLifeStyle(Integer memberId) throws Exception{
+        Map<String,Object> map = new HashMap<String,Object>();
+        String sql = " SELECT DISTINCT Memberid,Smoking,DoDrink,DoNtFood,StapleFood,SleepCond,LikeSports,MoveLong,TimeSeg,WeekNumTimes FROM mem7 WHERE Memberid = ? ";
+        SqlRowSet rowSet = jdbcService.query(sql, new Object[]{memberId});
+        while(rowSet.next()) {
+            map.put("memberId", rowSet.getInt("Memberid"));
+            map.put("smoking", rowSet.getString("Smoking"));
+            map.put("doDrink", rowSet.getString("DoDrink"));
+            map.put("doNtFood", rowSet.getString("DoNtFood"));
+            map.put("stapleFood", rowSet.getString("StapleFood"));
+            map.put("sleepCond", rowSet.getString("SleepCond"));
+            map.put("likeSports", rowSet.getString("LikeSports"));
+            map.put("moveLong", rowSet.getString("MoveLong"));
+            map.put("timeSeg", rowSet.getString("TimeSeg"));
+            map.put("weekNumTimes", rowSet.getInt("WeekNumTimes"));
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getMemPhysicalExamination 
+     * @Description: 医生查询会员的体格检查
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public Map<String,Object> getMemPhysicalExamination(Integer memberId) throws Exception{
+        Map<String,Object> map = new HashMap<String,Object>();
+        String sql = " SELECT DISTINCT Memberid,BloodType,AllergicHis,AllergicHisName,Height,Weight,Waist,Hip,Pulse,HeartRate,BloodH,BloodL,FastingGlucose,"
+                   + " UricAcid,TotalCholesterol,Triglyceride,DensityLipop,LDLip FROM mem2 WHERE Memberid = ? ";
+        SqlRowSet rowSet = jdbcService.query(sql, new Object[]{memberId});
+        while(rowSet.next()) {
+            map.put("memberId", rowSet.getInt("Memberid"));
+            map.put("bloodType", rowSet.getString("BloodType"));
+            map.put("allergicHis", rowSet.getString("AllergicHis"));
+            map.put("allergicHisName", rowSet.getString("AllergicHisName"));
+            map.put("height", rowSet.getInt("Height"));
+            map.put("weight", rowSet.getDouble("Weight"));
+            map.put("waist", rowSet.getInt("Waist"));
+            map.put("hip", rowSet.getInt("Hip"));
+            map.put("pulse", rowSet.getInt("Pulse"));
+            map.put("heartRate", rowSet.getInt("HeartRate"));
+            map.put("bloodH", rowSet.getInt("BloodH"));
+            map.put("bloodL", rowSet.getInt("BloodL"));
+            map.put("fastingGlucose", rowSet.getDouble("FastingGlucose"));
+            map.put("uricAcid", rowSet.getInt("UricAcid"));
+            map.put("totalCholesterol", rowSet.getDouble("TotalCholesterol"));
+            map.put("triglyceride", rowSet.getDouble("Triglyceride"));
+            map.put("densityLipop", rowSet.getDouble("DensityLipop"));
+            map.put("lDLip", rowSet.getDouble("LDLip"));
+        }
+        return map;
+    }
+    
+    /** 
+     * @Title: getMemBasicInfo 
+     * @Description: 医生查询会员的基本信息
+     * @author liuxiaoqin
+     * @createDate 2016-03-22
+     * @param memberId
+     * @return
+     * @throws Exception    
+     * @retrun Map<String,Object>
+     */
+    public Map<String,Object> getMemBasicInfo(Integer memberId) throws Exception{
+        Map<String,Object> map = new HashMap<String,Object>();
+        String sql = " SELECT DISTINCT a.Memberid,a.LogName,a.MemName,a.Gender,a.BirthDate,a.Tel,a.Email,a.IdCard,a.NativeAddr,a.Address, "
+                   + " a.MarryStatus,a.EducationStatus,a.Occupation,a.DocName,b.unique_id,b.relation,b.company,b.province,b.city,b.area,b.village, "
+                   + " b.live_status,b.nation,b.pay_type,b.other_pay,b.medical_account,b.agro_account,b.fetation_status,b.certificate_type,"
+                   + " b.file_type,b.file_status,b.family_code,c.MemName AS memType,c.MemDesc AS memTypeDesc "
+                   + " FROM omem a LEFT JOIN d_omem_relation b ON a.unique_id = b.unique_id LEFT JOIN omes c ON a.MemId = c.MemId WHERE a.Memberid = ? AND a.UseTag = 'T' ";
+        SqlRowSet rowSet = jdbcService.query(sql, new Object[]{memberId});
+        while(rowSet.next()) {
+            map.put("memberId", rowSet.getInt("Memberid"));
+            map.put("logName", rowSet.getString("LogName"));
+            map.put("memName", rowSet.getString("MemName"));
+            map.put("gender", rowSet.getString("Gender"));
+            map.put("email", rowSet.getString("Email"));
+            map.put("tel", rowSet.getString("Tel"));
+            map.put("idCard", rowSet.getString("IdCard"));
+            map.put("nativeAddr", rowSet.getString("NativeAddr"));
+            map.put("address", rowSet.getString("Address"));
+            map.put("marryStatus", rowSet.getString("MarryStatus"));
+            map.put("educationStatus", rowSet.getString("EducationStatus"));
+            map.put("occupation", rowSet.getString("Occupation"));
+            map.put("docName", rowSet.getString("DocName"));
+            map.put("uniqueId", rowSet.getString("unique_id"));
+            map.put("relation", rowSet.getInt("relation"));
+            map.put("company", rowSet.getString("company"));
+            map.put("administrativeArea", rowSet.getString("province")+rowSet.getString("city")+rowSet.getString("area")+rowSet.getString("village"));
+            map.put("liveStatus", rowSet.getInt("live_status"));
+            map.put("nation", rowSet.getString("nation"));
+            map.put("payType", rowSet.getInt("pay_type"));
+            map.put("otherPay", rowSet.getString("other_pay"));
+            map.put("medicalAccount", rowSet.getString("medical_account"));
+            map.put("agroAccount", rowSet.getString("agro_account"));
+            map.put("fetationStatus", rowSet.getInt("fetation_status"));
+            map.put("certificateType", rowSet.getInt("certificate_type"));
+            map.put("fileType", rowSet.getInt("file_type"));
+            map.put("fileStatus", rowSet.getInt("file_status"));
+            map.put("familyCode", rowSet.getString("family_code"));
+            map.put("memType", rowSet.getString("memType"));
+            map.put("memTypeDesc", rowSet.getString("memTypeDesc"));
+        }
+        return map;
+    }
+    
+}

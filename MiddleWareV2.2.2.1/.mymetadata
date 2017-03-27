@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project-module
+  type="WEB"
+  name="MiddleWare"
+  id="myeclipse.1374548091666"
+  context-root="/MiddleWare"
+  j2ee-spec="5.0"
+  archive="MiddleWare.war">
+  <attributes>
+    <attribute name="webrootdir" value="WebRoot" />
+  </attributes>
+</project-module>
+

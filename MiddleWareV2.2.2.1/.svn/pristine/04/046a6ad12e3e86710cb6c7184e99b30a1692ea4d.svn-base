@@ -1,0 +1,229 @@
+package com.zkhk.dao.Impl;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.springframework.jdbc.support.rowset.SqlRowSet;
+import org.springframework.stereotype.Repository;
+import org.springframework.util.StringUtils;
+import com.zkhk.dao.VisitDao;
+import com.zkhk.entity.MemBasicInfo;
+import com.zkhk.entity.MemSearch;
+import com.zkhk.entity.Odoc;
+import com.zkhk.jdbc.JdbcService;
+import com.zkhk.util.TimeUtil;
+
+/**
+ * @ClassName:     VisitDaoImpl.java 
+ * @Description:   随访
+ * @author         liuxiaoqin  
+ * @version        V1.0   
+ * @Date           2016年03月25日 下午4:13:46
+*****/
+@Repository(value="visitDao")
+public class VisitDaoImpl implements VisitDao{
+    
+    @Resource
+    private JdbcService jdbcService;
+    
+    /** 
+     * @Title:  findCanVisitDiabeteMem
+     * @Description: 医生获取可进行糖尿病随访的会员 
+     * @author liuxiaoqin
+     * @createDate 2016-01-29
+     * @param request
+     * @param response
+     * @throws Exception    
+     */
+    public List<MemBasicInfo> findCanVisitDiabeteMem(MemSearch memSearch)throws Exception{
+        List<MemBasicInfo> list = new ArrayList<MemBasicInfo>();
+        String searchName = memSearch.getSearchParam();
+        StringBuffer sql = new StringBuffer();
+        sql.append(" SELECT o.Tel, o.Docid AS doctorId, o.BirthDate AS birthDate, o.Gender AS gender, o.IdCard AS idCard, o.Memberid AS memberId, o.MemName AS memberName, ");
+        sql.append(" GROUP_CONCAT(DISTINCT CAST(od.DiseaseID AS CHAR) ORDER BY od.DiseaseID) AS diseaseIds,GROUP_CONCAT(DISTINCT od.DiseaseName ORDER BY od.DiseaseID) AS diseaseNames ");
+        sql.append(" FROM (SELECT DISTINCT tt.Memberid FROM (SELECT o.Memberid FROM omem o,ompb m,odmt d,dgp1 g,mem3 od WHERE o.useTag = 'T' ");
+        sql.append(" AND o.orgId = g.OrgId AND g.Docid = ? AND m.memberid = o.memberid AND m.memGrpid = d.MemGrpid AND d.OdgpId = g.OdgpId AND o.Memberid = od.Memberid AND od.DiseaseID = ? ");
+        if(!StringUtils.isEmpty(searchName)){
+            sql.append(" AND  (o.MemName like '%"+searchName+"%' or o.IdCard like '%"+searchName+"%' or o.Tel like '%"+searchName+"%' ) ");
+        }
+        int endRecord = memSearch.getPageSize();
+        int beginRecord = (memSearch.getPageNow()-1)*endRecord;
+        sql.append(" GROUP BY o.Memberid HAVING COUNT(DISTINCT od.DiseaseID) = 1 ORDER BY o.MemName,o.Memberid)tt LEFT JOIN ph_diabetes ph on tt.Memberid = ph.MemberID ");
+        sql.append(" WHERE (ph.VisitClass >0 OR ph.VisitClass IS NULL) LIMIT "+beginRecord+" ," +endRecord +" ) ");
+        sql.append(" aa LEFT JOIN omem o ON aa.Memberid = o.memberid LEFT JOIN  mem3 od ON aa.Memberid = od.Memberid GROUP BY o.MemName, o.Memberid ");
+        String finalSql = sql.toString();
+        SqlRowSet rowSet = jdbcService.query(finalSql,new Object[]{memSearch.getDoctorId(),memSearch.getDiseaseId()});
+        while(rowSet.next()){
+            MemBasicInfo info = new MemBasicInfo();
+            info.setAge(TimeUtil.getCurrentAgeByBirthdate(rowSet.getString("birthDate")));
+            info.setDoctorId(rowSet.getString("doctorId"));
+            info.setGender(rowSet.getString("gender"));
+            info.setIdCard(rowSet.getString("idCard"));
+            info.setMemberId(rowSet.getInt("memberId"));
+            info.setMemberName(rowSet.getString("memberName"));
+            String tel = rowSet.getString("Tel");
+            if(!StringUtils.isEmpty(tel)){
+                info.setTel(tel);
+            }
+            String newDiseaseIds = rowSet.getString("diseaseIds");
+            String newDiseaseNames = rowSet.getString("diseaseNames");
+            if(!StringUtils.isEmpty(newDiseaseIds)){
+                info.setDiseaseIds(newDiseaseIds);
+            }
+            if(!StringUtils.isEmpty(newDiseaseNames)){
+                info.setDiseaseNames(newDiseaseNames);
+            }
+            info.setPostprandialGlucose(findPGLU(info.getMemberId()));
+            list.add(info);
+        }
+        return list;
+    }
+    
+    /** 
+     * @Title:  findPGLU
+     * @Description: 获取最新的餐后血糖值 
+     * @author liuxiaoqin
+     * @createDate 2016-04-23
+     * @param request
+     * @param response
+     * @throws Exception    
+     */
+    public Double findPGLU(Integer memberId)throws Exception{
+    	Double pGLU = null;
+    	//从会员已随访记录中获取最新的。
+    	String sql = " SELECT b.PGLU,a.testTime FROM (SELECT DiabetesID, (SELECT CASE WHEN (UpdateTime IS NOT NULL) THEN UpdateTime  ELSE CreateTime END) AS testTime FROM ph_diabetes "
+    			   + " WHERE MemberID = ? AND VisitClass > 0 ORDER BY testTime DESC LIMIT 1)a LEFT JOIN ph_diabetesdetail b ON a.DiabetesID = b.DiabetesID ";
+    	SqlRowSet rowSet = jdbcService.query(sql,new Object[]{memberId});
+    	while(rowSet.next()){
+    		Date testTimeVisit = rowSet.getDate("testTime");
+    		Double visitPGLU = rowSet.getDouble("PGLU");
+    		if(visitPGLU != null){
+    			//从会员血糖测量记录中获取
+    			String newSql = " SELECT BsValue,TestTime AS testTime FROM obsr WHERE DelTag = 0 AND Memberid = ? ORDER BY TestTime LIMIT 1 ";
+    			SqlRowSet newRowSet = jdbcService.query(newSql,new Object[]{memberId});
+    			while(newRowSet.next()){
+    				Date testTimeObsr = newRowSet.getDate("TestTime");
+    				Double obsrPGLU = newRowSet.getDouble("BsValue");
+    				if(testTimeObsr.after(testTimeVisit) && obsrPGLU != null ){
+    					pGLU = obsrPGLU;
+    				}else{
+    					pGLU = visitPGLU;
+    				}
+    			}
+    		}
+    	}
+    	return pGLU;
+    }
+    
+    /** 
+     * @Title: findCanVisitHyperMem 
+     * @Description: 医生获取可进行高血压随访的会员 
+     * @author liuxiaoqin
+     * @createDate 2016-01-29
+     * @param request
+     * @param response
+     * @throws Exception    
+     */
+    public List<MemBasicInfo> findCanVisitHyperMem(MemSearch memSearch)throws Exception{
+        List<MemBasicInfo> list = new ArrayList<MemBasicInfo>();
+        String searchName = memSearch.getSearchParam();
+        StringBuffer sql = new StringBuffer();
+        sql.append(" SELECT o.Tel, o.Docid AS doctorId, o.BirthDate AS birthDate, o.Gender AS gender, o.IdCard AS idCard, o.Memberid AS memberId, o.MemName AS memberName, ");
+        sql.append(" GROUP_CONCAT(DISTINCT CAST(od.DiseaseID AS CHAR) ORDER BY od.DiseaseID) AS diseaseIds,GROUP_CONCAT(DISTINCT od.DiseaseName ORDER BY od.DiseaseID) AS diseaseNames ");
+        sql.append(" FROM (SELECT DISTINCT tt.Memberid FROM (SELECT o.Memberid FROM omem o,ompb m,odmt d,dgp1 g,mem3 od WHERE o.useTag = 'T' ");
+        sql.append(" AND o.orgId = g.OrgId AND g.Docid = ? AND m.memberid = o.memberid AND m.memGrpid = d.MemGrpid AND d.OdgpId = g.OdgpId AND o.Memberid = od.Memberid AND od.DiseaseID = ? ");
+        if(!StringUtils.isEmpty(searchName)){
+            sql.append(" AND  (o.MemName like '%"+searchName+"%' or o.IdCard like '%"+searchName+"%' or o.Tel like '%"+searchName+"%' ) ");
+        }
+        int endRecord = memSearch.getPageSize();
+        int beginRecord = (memSearch.getPageNow()-1)*endRecord;
+        sql.append(" GROUP BY o.Memberid HAVING COUNT(DISTINCT od.DiseaseID) = 1 ORDER BY o.MemName,o.Memberid)tt LEFT JOIN ph_hypertension ph on tt.Memberid = ph.MemberID ");
+        sql.append(" WHERE (ph.VisitClass >0 OR ph.VisitClass IS NULL) LIMIT "+beginRecord+" ," +endRecord +" ) ");
+        sql.append(" aa LEFT JOIN omem o ON aa.Memberid = o.memberid LEFT JOIN  mem3 od ON aa.Memberid = od.Memberid GROUP BY o.MemName, o.Memberid ");
+        String finalSql = sql.toString();
+        SqlRowSet rowSet = jdbcService.query(finalSql,new Object[]{memSearch.getDoctorId(),memSearch.getDiseaseId()});
+        while(rowSet.next()){
+            MemBasicInfo info = new MemBasicInfo();
+            info.setAge(TimeUtil.getCurrentAgeByBirthdate(rowSet.getString("birthDate")));
+            info.setDoctorId(rowSet.getString("doctorId"));
+            info.setGender(rowSet.getString("gender"));
+            info.setIdCard(rowSet.getString("idCard"));
+            info.setMemberId(rowSet.getInt("memberId"));
+            info.setMemberName(rowSet.getString("memberName"));
+            String tel = rowSet.getString("Tel");
+            if(!StringUtils.isEmpty(tel)){
+                info.setTel(tel);
+            }
+            String newDiseaseIds = rowSet.getString("diseaseIds");
+            String newDiseaseNames = rowSet.getString("diseaseNames");
+            if(!StringUtils.isEmpty(newDiseaseIds)){
+                info.setDiseaseIds(newDiseaseIds);
+            }
+            if(!StringUtils.isEmpty(newDiseaseNames)){
+                info.setDiseaseNames(newDiseaseNames);
+            }
+            list.add(info);
+        }
+        return list;
+    }
+    
+    /** 
+     * @Title: findDoctorBasicInfo 
+     * @Description: 获取医生的基本资料
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-04-04
+     * @return
+     * @throws Exception    
+     * @retrun Odoc
+     */
+    public Odoc findDoctorBasicInfo(Integer doctorId)throws Exception{
+        String sql = " SELECT Docid ,DocName FROM odoc WHERE Docid = ? AND Tag = 'T' ";
+       SqlRowSet rowSet = jdbcService.query(sql, new Object[]{doctorId});
+       while(rowSet.next()){
+           Odoc doc = new Odoc();
+           doc.setDoctorId(rowSet.getInt("Docid"));
+           doc.setDoctorName(rowSet.getString("DocName"));
+           return doc;
+       }
+       return null;
+    }
+    
+    /** 
+     * @Title: hasVisitingHyperRecord 
+     * @Description: 该会员是否存在待随访的高血压记录 
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-04-11
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer hasVisitingHyperRecord(Integer memberId)throws Exception{
+        int count = 0;
+        String sql = " SELECT COUNT(HypertensionID) FROM ph_hypertension WHERE MemberID = ? AND VisitClass = 0 AND IsDeleted = 0 ";
+        count = jdbcService.queryForInt(sql, new Object[]{memberId});
+        return count;
+    }
+    
+    /** 
+     * @Title: hasVisitingDiabetesRecord 
+     * @Description: 该会员是否存在待随访的糖尿病记录 
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-04-11
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer hasVisitingDiabetesRecord(Integer memberId)throws Exception{
+        int count = 0;
+        String sql = " SELECT COUNT(DiabetesID) FROM ph_diabetes WHERE MemberID = ? AND VisitClass = 0 AND IsDeleted = 0  ";
+        count = jdbcService.queryForInt(sql, new Object[]{memberId});
+        return count;
+    }
+    
+}

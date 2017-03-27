@@ -1,0 +1,598 @@
+package com.zkhk.contoller;
+
+import java.io.IOException;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.log4j.Logger;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.ModelAndView;
+
+import com.alibaba.fastjson.JSON;
+import com.zkhk.constants.Constants;
+import com.zkhk.entity.CallValue;
+import com.zkhk.entity.ChartParam;
+import com.zkhk.entity.OmdsParam;
+import com.zkhk.entity.Osbp;
+import com.zkhk.entity.ReturnResult;
+import com.zkhk.entity.ReturnValue;
+import com.zkhk.entity.ViewParam;
+import com.zkhk.services.DocService;
+import com.zkhk.services.MeasureService;
+import com.zkhk.util.GzipUtil;
+import com.zkhk.util.SystemUtils;
+
+/**
+ * 用户测量接口
+ * 
+ * @author bit
+ * 
+ */
+@Controller
+@RequestMapping("measure")
+public class MeasureController {
+	private Logger logger = Logger.getLogger(MeasureController.class);
+
+	@Resource(name = "measureService")
+	private MeasureService measureService;
+	
+	@Resource(name = "docService")
+    private DocService docService;
+	
+
+	/**
+	 * 查询会员测量信息 state 0表示成功 1表示查询不到数据 2表示异常 3表示参数错误 9表示没权限登入
+	 * 
+	 * @param request
+	 * @param response
+	 * @throws IOException 
+	 */
+	@RequestMapping("record")
+	public void record(HttpServletRequest request, HttpServletResponse response) throws IOException {
+
+		try {		
+			String resPString = measureService.findMemRecordbyParam(request);
+			GzipUtil.write(response, resPString);
+		} catch (Exception e) {
+			ReturnValue re=new ReturnValue();
+			re.setState(2);
+			re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+			logger.error("会员健康档案信息查询运行异常:"+e);
+			response.getWriter().write(JSON.toJSONString(re));
+		
+		}
+
+	}
+
+	/**
+	 * 查询会员关联测量信息 state 0表示成功 1表示查询不到数据 2表示异常 3表示参数错误 9表示没权限登入
+	 * 
+	 * @param request
+	 * @param response
+	 * @throws IOException 
+	 */
+	@RequestMapping("relationRecord")
+	public void relationRecord(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		try {
+			String resPString = measureService.findMemRecord2byParam(request);
+			GzipUtil.write(response, resPString);
+		} catch (Exception e) {
+			ReturnValue re=new ReturnValue();
+			re.setState(2);
+			re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+			logger.error("会员健康档案信息查询运行异常:"+e);
+			response.getWriter().write(JSON.toJSONString(re));
+			
+
+		}
+
+	}
+
+	/**
+	 * 查询会员测量信息的异常心电信息 state 0表示成功 1表示查询不到数据 2表示异常 9表示没权限登入
+	 * 
+	 * @param request
+	 * @param response
+	 * @throws IOException 
+	 */
+	@RequestMapping("anomalyEcg")
+	public void anomalyEcg(HttpServletRequest request,HttpServletResponse response) throws IOException {
+		try {
+			String resPString = measureService.findAnomalyEcgbyParam(request);
+			GzipUtil.write(response, resPString);
+		} catch (Exception e) {
+			ReturnValue re=new ReturnValue();
+			re.setState(2);
+			re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+			logger.error("会员异常心电信息查询运行异常:"+e);
+			response.getWriter().write(JSON.toJSONString(re));
+		}
+
+	}
+
+	/**
+	 * 上傳血糖测量数据 state 0表示成功 1表示查询不到数据 2表示异常 9表示没权限登入
+	 * 
+	 * @param request
+	 * @param response
+	 * @throws IOException 
+	 */
+	@RequestMapping(value="uploadObsr",method=RequestMethod.POST)
+	public void uploadObsr(HttpServletRequest request,HttpServletResponse response) throws IOException {
+
+		try {
+			String resPString = measureService.saveObsrData(request);
+			GzipUtil.write(response, resPString);
+		} catch (Exception e) {
+			ReturnValue re=new ReturnValue();
+			re.setState(2);
+			re.setMessage(SystemUtils.getValue(Constants.ADD_DATA_EXCEPTION));
+			logger.error("保存会员血糖测量信息运行异常:"+e);
+			response.getWriter().write(JSON.toJSONString(re));
+		}
+	}
+	
+	/**
+	 * 上傳血压测量数据
+	 * state 0表示成功 1表示查询不到数据 2表示异常 9表示没权限登入
+	 * @param request
+	 * @param response
+	 * @throws IOException 
+	 */
+	@RequestMapping(value="uploadOsbp",method=RequestMethod.POST)
+	public void uploadOsbp(HttpServletRequest request,HttpServletResponse response) throws IOException {
+		 
+	try {
+		String params = request.getParameter("params");
+		CallValue callValue = JSON.parseObject(params, CallValue.class);
+		Osbp osbp = JSON.parseObject(callValue.getParam(), Osbp.class);
+		ReturnValue re = measureService.saveOsbpData(osbp,callValue.getMemberId());
+		String resPString =  JSON.toJSONString(re); 
+		GzipUtil.write(response, resPString);
+	} catch (Exception e) {
+		ReturnValue re=new ReturnValue();
+		re.setState(2);
+		re.setMessage(SystemUtils.getValue(Constants.ADD_DATA_EXCEPTION));
+		logger.error("保存会员血压测量信息运行异常:"+e);
+		response.getWriter().write(JSON.toJSONString(re));
+	}
+		
+	}
+	
+	/**
+	 * 上傳动态心电数据
+	 * state 0表示成功 1表示查询不到数据 2表示异常 9表示没权限登入
+	 * @param request
+	 * @param response
+	 * @throws IOException 
+	 */
+	@RequestMapping(value="uploadEcg",method=RequestMethod.POST)
+	public void uploadEcg(HttpServletRequest request,HttpServletResponse response) throws IOException {		 
+	try {
+		String resPString=   measureService.saveEcgData(request);
+		GzipUtil.write(response, resPString);
+	} catch (Exception e) {
+		ReturnValue re=new ReturnValue();
+		re.setState(2);
+		re.setMessage(SystemUtils.getValue(Constants.ADD_DATA_EXCEPTION));
+		logger.error("保存会员心电测量信息运行异常:"+e);
+		response.getWriter().write(JSON.toJSONString(re));
+		
+	}
+		
+	}
+	
+	
+	/**
+	 * 上傳三合一测量数据
+	 * state 0表示成功 1表示查询不到数据 2表示异常 9表示没权限登入
+	 * @param request
+	 * @param response
+	 * @throws IOException 
+	 */
+	@RequestMapping(value="uploadEcgPpg",method=RequestMethod.POST)
+	public void uploadEcgPpg(HttpServletRequest request,HttpServletResponse response) throws IOException {		 
+	try {
+		String resPString=   measureService.saveEcgPpgData(request);
+		GzipUtil.write(response, resPString);
+	} catch (Exception e) {
+		ReturnValue re=new ReturnValue();
+		re.setState(2);
+		re.setMessage(SystemUtils.getValue(Constants.ADD_DATA_EXCEPTION));
+		logger.error("保存会员三合一测量信息运行异常:"+e);
+		response.getWriter().write(JSON.toJSONString(re));
+	}
+		
+  }
+	/**
+	 * 获取心电数据
+	 * @param request
+	 * @param response
+	 * @throws IOException 
+	 */
+	@RequestMapping("getOecg")
+	public void getOecg(HttpServletRequest request,HttpServletResponse response) throws IOException {
+		 
+	try {
+		String resPString=   measureService.getOecgById(request);
+		GzipUtil.write(response, resPString);
+	} catch (Exception e) {
+		ReturnValue re=new ReturnValue();
+		re.setState(2);
+		re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+		logger.error("心电信息查询运行异常:"+e);
+		response.getWriter().write(JSON.toJSONString(re));
+	}
+		
+  }
+	
+	/**
+	 * 获取脉搏数据
+	 * @param request
+	 * @param response
+	 * @throws IOException 
+	 */
+	@RequestMapping("getOppg")
+	public void getOppg(HttpServletRequest request,HttpServletResponse response) throws IOException {
+		 
+	try {
+		String resPString=   measureService.getOppgById(request);
+		GzipUtil.write(response, resPString);
+	} catch (Exception e) {
+		ReturnValue re=new ReturnValue();
+		re.setState(2);
+		re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+		logger.error("脉搏信息查询运行异常:"+e);
+		response.getWriter().write(JSON.toJSONString(re));
+	}
+		
+  }
+	/**
+	 * 获取的测量图片信息
+	 * @param request
+	 * @param response
+	 * @return
+	 * @throws Exception
+	 */
+	@RequestMapping("measureLine")  
+	public ModelAndView showXYLine(HttpServletRequest request,  HttpServletResponse response) throws Exception {		
+        measureService.getJfreeChartFileName(request,response); 
+		ModelAndView mav = new ModelAndView();  
+		String params = request.getParameter("params");
+		CallValue value = JSON.parseObject(params, CallValue.class);
+		ViewParam param = JSON.parseObject(value.getParam(),ViewParam.class);
+		if("ecg".equals(param.getType())||"mi_ecg".equals(param.getType())||"ab_ecg".equals(param.getType())){
+			mav.setViewName("/highChart");  
+			return mav; 
+		}
+		else if("ppg".equals(param.getType())) {
+			mav.setViewName("/ppgChart");  
+			return mav;  
+		}else if("hr_ppg".equals(param.getType())) {
+			mav.setViewName("/hrppgChart"); 
+			return mav;  
+		}else if("hr_ecg".equals(param.getType())) {
+			mav.setViewName("/hrecgChart"); 
+			return mav;  
+		}	
+		return null;  
+	} 
+	
+	/**
+	 * 获取的测量图片在
+	 * @param request
+	 * @param response
+	 * @return
+	 * @throws Exception
+	 */
+	@RequestMapping("getPage")  
+	public void getPage(HttpServletRequest request,  HttpServletResponse response) throws Exception {		
+		try {
+			String resPString=   measureService.getPageByparam(request);
+			GzipUtil.write(response, resPString);
+		} catch (Exception e) {
+			ReturnValue re=new ReturnValue();
+			re.setState(2);
+			re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+			logger.error("查询图片页数异常:"+e);
+			response.getWriter().write(JSON.toJSONString(re));
+		}
+		
+	} 
+
+	/**
+	 * 获取所有在异常信息
+	 * @param request
+	 * @param response
+	 * @return
+	 * @throws Exception
+	 */
+	@RequestMapping("getAllAbnormal")  
+	public void getAllAbnormal(HttpServletRequest request,  HttpServletResponse response) throws Exception {		
+		try {
+			String resPString=   measureService.getAllAbnormal(request);
+			GzipUtil.write(response, resPString);
+		} catch (Exception e) {
+			ReturnValue re=new ReturnValue();
+			re.setState(2);
+			re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+			logger.error("查询所有异常信息成功运行异常:"+e);
+			response.getWriter().write(JSON.toJSONString(re));
+		}
+		
+	} 
+	
+
+	/**
+	 * 获取是否存在血压信息
+	 * @param request
+	 * @param response
+	 * @return 0表示可以通过 1表示不可以通过 2表示查询出现异常
+	 * @throws Exception
+	 */
+	@RequestMapping("isExitOsbp")  
+	public void isExitOsbp(HttpServletRequest request,  HttpServletResponse response) throws Exception {		
+		try {
+			String resPString=   measureService.isExitOsbp(request);
+			GzipUtil.write(response, resPString);
+		} catch (Exception e) {
+			ReturnValue re=new ReturnValue();
+			re.setState(2);
+			re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+			logger.error("查询血压测试数据异常:"+e);
+			response.getWriter().write(JSON.toJSONString(re));
+		}
+		
+	}
+	
+	/**
+	 * 根据文件id下载文件
+	 * @param request
+	 * @param response
+	 * @throws Exception
+	 */
+	@RequestMapping(value = "download")
+	public void download(HttpServletRequest request,HttpServletResponse response) throws Exception {
+	    measureService.download(request, response);
+
+	}
+	/**
+	 * 根据文件id下载文件
+	 * @param request
+	 * @param response
+	 * @throws Exception
+	 */
+	@RequestMapping(value = "getMeasureByEventId")
+	public void getMeasureByEventId(HttpServletRequest request,HttpServletResponse response) throws Exception {
+		try {
+			String resPString=   measureService.getMeasureByEventId(request);
+			GzipUtil.write(response, resPString);
+		} catch (Exception e) {
+			ReturnValue re=new ReturnValue();
+			re.setState(2);
+			re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+			logger.error("查询数据异常:"+e);
+			response.getWriter().write(JSON.toJSONString(re));
+		}
+
+	}
+	
+	
+	/**
+	 * 根据数据类型删除会员测量数据
+	 * @param request
+	 * @param response
+	 * @throws Exception
+	 */
+	@RequestMapping(value = "deleteMeasureRecord")
+	public void deleteMeasureRecord(HttpServletRequest request,HttpServletResponse response) throws Exception {
+		try {
+			String resPString=   measureService.deleteMeasureRecord(request);
+			GzipUtil.write(response, resPString);
+		} catch (Exception e) {
+			ReturnValue re=new ReturnValue();
+			re.setState(2);
+			re.setMessage(SystemUtils.getValue(Constants.DELETE_DATA_EXCEPTION));
+			logger.error("删除测量数据异常:"+e);
+			response.getWriter().write(JSON.toJSONString(re));
+		}
+
+	}
+	
+	/**
+	 * 查看用户的健康档案信息
+	 * @param request
+	 * @param response
+	 * @throws IOException
+	 */
+	@RequestMapping("checkMemFile")
+	public void checkMemFile(HttpServletRequest request, HttpServletResponse response) throws IOException {
+	    try {
+	        String resPString = docService.checkMemFile(request);
+	        GzipUtil.write(response, resPString);
+	    } catch (Exception e) {
+	        ReturnValue re = new ReturnValue();
+	        re.setState(1);
+	        re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+	        logger.error("获取健康档案失败:"+e);
+	        response.getWriter().write(JSON.toJSONString(re));
+	    }
+	}
+	
+	/**
+     * 保存会员健康档案
+     * @param request
+     * @param response
+     * @throws IOException
+     */
+    @RequestMapping("saveMemFile")
+    public void saveMemFile(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try {
+            String resPString = docService.saveMemFile(request);
+            GzipUtil.write(response, resPString);
+        } catch (Exception e) {
+            ReturnValue re = new ReturnValue();
+            re.setState(1);
+            re.setMessage(SystemUtils.getValue(Constants.ADD_DATA_EXCEPTION));
+            logger.error("保存健康档案失败:"+e);
+            response.getWriter().write(JSON.toJSONString(re));
+        }
+    }
+    
+    /**
+     * 根据会员id数据类型等获取会员单项测量chart图数据
+     * @param request
+     * @param response
+     * @throws IOException
+     */
+    @RequestMapping("getMeasueChartData")
+    public void getMeasueChartData(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try {
+        	
+			String params = request.getParameter("params");
+			CallValue callValue = JSON.parseObject(params, CallValue.class);
+			ChartParam param = JSON.parseObject(callValue.getParam(), ChartParam.class);
+            String resPString = measureService.getMeasueChartData(param);
+            GzipUtil.write(response, resPString);
+            
+        } catch (Exception e) {
+            ReturnResult re = new ReturnResult();
+            re.setState(2);
+            re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+            logger.error("根据会员id数据类型等获取会员单项测量chart图数据失败:"+e);
+            response.getWriter().write(JSON.toJSONString(re));
+        }
+    }
+    
+    /** 
+     * @Title: getMeasureRecordList 
+     * @Description: 获取测量记录list(返回新增事件类型)
+     * @liuxaioqin
+     * @createDate 2016-01-28 
+     * @param request
+     * @param response
+     * @throws IOException    
+     * @retrun void
+     */
+    @RequestMapping(value="getMeasureRecordList",method=RequestMethod.POST)
+    public void getMeasureRecordList(HttpServletRequest request, HttpServletResponse response) throws IOException {
+
+        try {   
+            String params = request.getParameter("params");
+            CallValue callValue = JSON.parseObject(params, CallValue.class);
+            OmdsParam param = JSON.parseObject(callValue.getParam(),OmdsParam.class);
+            String resPString = measureService.getMeasureRecordList(param);
+            GzipUtil.write(response, resPString);
+        } catch (Exception e) {
+            ReturnValue re=new ReturnValue();
+            re.setState(2);
+            re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+            logger.error("查询会员测量记录运行异常:"+e);
+            e.printStackTrace();
+            response.getWriter().write(JSON.toJSONString(re));
+        
+        }
+
+    }
+	
+    /** 
+     * @Title: getAllMeasureRecord 
+     * @Description: 获取各种测量类型记录
+     * @liuxaioqin
+     * @createDate 2016-05-18 
+     * @param request
+     * @param response
+     * @throws IOException    
+     * @retrun void
+     */
+    @RequestMapping(value="getAllMeasureRecord",method=RequestMethod.POST)
+    public void getAllMeasureRecord(HttpServletRequest request, HttpServletResponse response) throws IOException {
+	    try {
+	        String resPString = measureService.getAllMeasureRecord(request);
+	        GzipUtil.write(response, resPString);
+	    } catch (Exception e) {
+	        ReturnValue re = new ReturnValue();
+	        re.setState(1);
+	        re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+	        logger.error("获取各种测量类型记录:"+e);
+	        response.getWriter().write(JSON.toJSONString(re));
+	    }
+	}
+    
+    /** 
+     * @Title: findLastestMonthMeasureCount 
+     * @Description: 获取最近一个月内四种类型的测量条数
+     * @liuxaioqin
+     * @createDate 2016-05-18 
+     * @param request
+     * @param response
+     * @throws IOException    
+     * @retrun void
+     */
+    @RequestMapping(value="findLastestMonthMeasureCount",method=RequestMethod.POST)
+    public void findLastestMonthMeasureCount(HttpServletRequest request, HttpServletResponse response) throws IOException {
+	    try {
+	        String resPString = measureService.findLastestMonthMeasureCount(request);
+	        GzipUtil.write(response, resPString);
+	    } catch (Exception e) {
+	        ReturnValue re = new ReturnValue();
+	        re.setState(1);
+	        re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+	        logger.error("获取最近一个月内四种类型的测量条数异常:"+e);
+	        response.getWriter().write(JSON.toJSONString(re));
+	    }
+	}
+    
+    /** 
+     * @Title: findAllMeasureRecordByParam 
+     * @Description: 根据不同条件查询测量数据
+     * @liuxaioqin
+     * @createDate 2016-05-18 
+     * @param request
+     * @param response
+     * @throws IOException    
+     * @retrun void
+     */
+    @RequestMapping(value="findAllMeasureRecordByParam",method=RequestMethod.POST)
+    public void findAllMeasureRecordByParam(HttpServletRequest request, HttpServletResponse response) throws IOException {
+	    try {
+	        String resPString = measureService.findAllMeasureRecordByParam(request);
+	        GzipUtil.write(response, resPString);
+	    } catch (Exception e) {
+	        ReturnValue re = new ReturnValue();
+	        re.setState(1);
+	        re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+	        logger.error("根据不同条件查询测量数据异常:"+e);
+	        response.getWriter().write(JSON.toJSONString(re));
+	    }
+	}
+    
+    /** 
+     * @Title: findMeasRecordByEventIdAndType 
+     * @Description: 根据测量事件id和type获取测量数据
+     * @liuxaioqin
+     * @createDate 2016-05-30 
+     * @param request
+     * @param response
+     * @throws IOException    
+     * @retrun void
+     */
+    @RequestMapping(value="findMeasRecordByEventIdAndType",method=RequestMethod.POST)
+    public void findMeasRecordByEventIdAndType(HttpServletRequest request, HttpServletResponse response) throws IOException {
+	    try {
+	        String resPString = measureService.findMeasRecordByEventIdAndType(request);
+	        GzipUtil.write(response, resPString);
+	    } catch (Exception e) {
+	        ReturnValue re = new ReturnValue();
+	        re.setState(1);
+	        re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+	        logger.error("根据测量事件id和type获取测量数据异常:"+e);
+	        response.getWriter().write(JSON.toJSONString(re));
+	    }
+	}
+    
+}

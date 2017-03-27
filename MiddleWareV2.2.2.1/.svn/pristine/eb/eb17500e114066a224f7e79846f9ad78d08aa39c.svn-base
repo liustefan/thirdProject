@@ -1,0 +1,216 @@
+package com.zkhk.services;
+
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.log4j.Logger;
+import org.springframework.stereotype.Service;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.hkbithealth.bean.ph.PHHealthExam;
+import com.hkbithealth.bean.ph.PHOmem;
+import com.hkbithealth.service.ph.PublicHealthService;
+import com.zkhk.entity.CallValue;
+import com.zkhk.entity.PHHealthExamParam;
+import com.zkhk.entity.ReturnResult;
+
+@Service("docHealthExamService")
+public class DocHealthExamServiceImpl implements DocHealthExamService {
+
+	private Logger logger = Logger.getLogger(DocHealthExamServiceImpl.class);
+	
+	private PublicHealthService publicHealthService = PublicHealthService.getInstance();
+    
+	/** 
+     * @Title: findMemHealthExamReportList 
+     * @Description: 医生查询会员的健康体检报告列表
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-17
+     * @throws Exception    
+     * @retrun String
+     */
+    @SuppressWarnings("unchecked")
+    public String findMemHealthExamReportList(HttpServletRequest request) throws Exception{
+        ReturnResult result = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        PHHealthExamParam param = JSON.parseObject(callValue.getParam(), PHHealthExamParam.class);
+        int doctorId = callValue.getMemberId();
+        if(doctorId <= 0){
+            result.setState(1);
+            result.setMessage("参数医生id【"+doctorId+"】应为正整数！");
+            logger.info("参数医生id【"+doctorId+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        int memberId = param.getMemberId();
+        if(memberId <= 0){
+            result.setState(1);
+            result.setMessage("参数memberId【"+memberId+"】应为正整数！");
+            logger.info("参数memberId【"+memberId+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        int pageNow = param.getPageNow();
+        int pageSize = param.getPageSize();
+        PHOmem omem = new PHOmem();
+        omem.setMemberid(memberId);
+        omem.setDocid(doctorId);
+        
+        List<PHHealthExam> healthExamReportList = (List<PHHealthExam>) publicHealthService.queryPhysicalPage(omem, null, null, pageNow, pageSize).getList();
+        if(healthExamReportList.size() > 0){
+            List<PHHealthExam> memHealthExamReportList = new ArrayList<PHHealthExam>();
+            for(PHHealthExam exam : healthExamReportList){
+                PHHealthExam newExam = new PHHealthExam();
+                newExam.setExamDate(exam.getExamDate());
+                newExam.setHExamID(exam.getHExamID());
+                newExam.setMemberID(exam.getMemberID());
+                memHealthExamReportList.add(newExam);
+            }
+            result.setState(0);
+            result.setMessage("医生查询会员的健康体检报告列表成功");
+            result.setContent(memHealthExamReportList);
+            logger.info("医生查询会员的健康体检报告列表成功");
+        }else{
+            result.setState(3);
+            result.setMessage("没有该会员的健康体检报告列表");
+            logger.info("没有该会员的健康体检报告列表");
+        }
+        return JSON.toJSONString(result);
+    }
+    
+    /** 
+     * @Title: findMemHealthExamDetail 
+     * @Description: 医生查询会员的健康体检报告明细
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-17
+     * @throws Exception    
+     * @retrun String
+     */
+    public String findMemHealthExamDetail(HttpServletRequest request) throws Exception{
+        ReturnResult result = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        JSONObject jsonObject = JSONObject.parseObject(callValue.getParam());
+        long hExamID = jsonObject.getLong("hExamID");
+        if(hExamID <= 0){
+            result.setState(1);
+            result.setMessage("参数hExamID【"+hExamID+"】应为正整数！");
+            logger.info("参数hExamID【"+hExamID+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        PHHealthExam memHealthExamDetail = publicHealthService.queryPhysicalById(hExamID);
+        if(memHealthExamDetail != null){
+            result.setState(0);
+            result.setMessage("医生查询会员的健康体检报告明细成功");
+            result.setContent(memHealthExamDetail);
+            logger.info("医生查询会员的健康体检报告明细成功");
+        }else{
+            result.setState(3);
+            result.setMessage("没有该会员的健康体检报告明细");
+            logger.info("没有该会员的健康体检报告明细");
+        }
+        return JSON.toJSONString(result);
+    }
+    
+    /** 
+     * @Title: addOrModifyMemHealthExam 
+     * @Description: 医生新增或者修改会员的健康体检
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-17
+     * @throws Exception    
+     * @retrun String
+     */
+    public String addOrModifyMemHealthExam(HttpServletRequest request) throws Exception{
+        ReturnResult result = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        PHHealthExam param = JSON.parseObject(callValue.getParam(), PHHealthExam.class);
+        int doctorId = callValue.getMemberId();
+        if(doctorId <= 0){
+            result.setState(1);
+            result.setMessage("参数医生id【"+doctorId+"】应为正整数！");
+            logger.info("参数医生id【"+doctorId+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        int memberId = param.getMemberID();
+        if(memberId <= 0){
+            result.setState(1);
+            result.setMessage("参数memberID【"+memberId+"】应为正整数！");
+            logger.info("参数memberID【"+memberId+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        long hExamID = param.getHExamID();
+        if(hExamID <= 0){
+            result.setState(1);
+            result.setMessage("参数hExamID【"+hExamID+"】应为正整数！");
+            logger.info("参数hExamID【"+hExamID+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        boolean isSuccess = publicHealthService.addOrModifyPhysical(param);
+        if(isSuccess){
+            result.setState(0);
+            result.setMessage("医生新增或者修改会员的健康体检成功");
+            logger.info("医生新增或者修改会员的健康体检成功");
+        }else{
+            result.setState(3);
+            result.setMessage("医生新增或者修改会员的健康体检失败");
+            logger.info("医生新增或者修改会员的健康体检失败");
+        }
+        return JSON.toJSONString(result);
+    }
+    
+    /** 
+     * @Title: addOrModifyMemDiseases 
+     * @Description: 医生新增或者修改会员的疾病史
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-03-17
+     * @throws Exception    
+     * @retrun String
+     */
+    public String addOrModifyMemDiseases(HttpServletRequest request) throws Exception{
+        ReturnResult result = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        PHHealthExam param = JSON.parseObject(callValue.getParam(), PHHealthExam.class);
+        int doctorId = callValue.getMemberId();
+        if(doctorId <= 0){
+            result.setState(1);
+            result.setMessage("参数医生id【"+doctorId+"】应为正整数！");
+            logger.info("参数医生id【"+doctorId+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        int memberId = param.getMemberID();
+        if(memberId <= 0){
+            result.setState(1);
+            result.setMessage("参数memberID【"+memberId+"】应为正整数！");
+            logger.info("参数memberID【"+memberId+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        long hExamID = param.getHExamID();
+        if(hExamID <= 0){
+            result.setState(1);
+            result.setMessage("参数hExamID【"+hExamID+"】应为正整数！");
+            logger.info("参数hExamID【"+hExamID+"】应为正整数！");
+            return JSON.toJSONString(result);
+        }
+        boolean isSuccess = publicHealthService.addOrModifyPhysical(param);
+        if(isSuccess){
+            result.setState(0);
+            result.setMessage("医生新增或者修改会员的健康体检成功");
+            logger.info("医生新增或者修改会员的健康体检成功");
+        }else{
+            result.setState(3);
+            result.setMessage("医生新增或者修改会员的健康体检失败");
+            logger.info("医生新增或者修改会员的健康体检失败");
+        }
+        return JSON.toJSONString(result);
+    }
+    
+}

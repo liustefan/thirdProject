@@ -1,0 +1,312 @@
+package com.zkhk.dao;
+
+import java.util.List;
+
+import com.zkhk.entity.MeasureRecordParam;
+import com.zkhk.entity.MemBasicInfo;
+import com.zkhk.entity.MemFile;
+import com.zkhk.entity.MemLog;
+import com.zkhk.entity.MemMeasureRecord;
+import com.zkhk.entity.MemSearch;
+import com.zkhk.entity.Obsr;
+import com.zkhk.entity.Odoc;
+import com.zkhk.entity.Oecg;
+import com.zkhk.entity.Omds;
+import com.zkhk.entity.Omem;
+import com.zkhk.entity.Oppg;
+import com.zkhk.entity.Osbp;
+import com.zkhk.entity.OsbpFile;
+import com.zkhk.entity.ReturnMeasureData;
+
+/**
+ * 医生管理类
+ * @author xiemt
+ *
+ */
+public interface DocDao {
+	
+    /**
+     * 通过用户名和密码查询医生用户的登入信息
+     * @param log
+     * @return
+     * @throws Exception
+     */
+	MemLog findDocbyNameAndPassWord(MemLog log) throws Exception;
+	
+   /**
+    * 更新医生的登入状态信息
+    * @param loginLog
+    * @throws Exception
+    */
+	int updateDocLogByMemberid(MemLog loginLog) throws Exception;
+	
+	
+	/**
+	 * 保存医生登录信息
+	 * @param loginLog
+	 * @throws Exception
+	 */
+	void saveDoctorLog(MemLog loginLog) throws Exception;
+	
+	
+	/**
+	 * 根据医生ID查找医生信息
+	 * @param loginLog
+	 * @throws Exception
+	 */
+	void queryDocByDoctorId(MemLog loginLog) throws Exception;
+	
+	
+	
+	/**
+	 * 验证用户session和id是否可以登入
+	 * @param session
+	 * @param memberId
+	 * @return
+	 * @throws Exception
+	 */
+    boolean findDocBySessionAndId(String session, int memberId)throws Exception;
+    /**
+     * 通过会员id查询会员的基本信息
+     * @param memberId
+     * @return
+     * @throws Exception
+     */
+    
+    List<MemBasicInfo> queryMemberListByParams(MemSearch memSearch)throws Exception;
+      
+    /**
+     * 通过会员ID和医生ID查找会员
+     * @param session
+     * @param memberId
+     * @return
+     * @throws Exception
+     */
+    int  findmemByMemberIdAndDoctorId(int doctorId, int memberId)throws Exception;
+    
+    
+    
+    /**
+     * 通过用户membeId和密码查找用户
+     * @return
+     * @throws Exception
+     */
+    MemLog findUserbyMemberIdAndPassWord(MemSearch memSearch)throws Exception; 
+    
+    
+    /**
+     * 保存会员健康档案
+     * @param memFile
+     * @return
+     * @throws Exception
+     */
+    int  saveMemFile(OsbpFile osbpFile)throws Exception;
+    
+    
+    /**
+     * 更新会员健康档案
+     * @param osbpFile
+     * @return
+     * @throws Exception
+     */
+    int  updateMemFile(OsbpFile osbpFile)throws Exception;
+    
+    
+    /**
+     * 获取用户健康档案信息
+     * @param memFile
+     * @return
+     * @throws Exception
+     */
+    MemFile  queryMemFile(String memberId)throws Exception;
+    
+     /** 
+     * @Title: queryDiseaseListBymemeberId 
+     * @Description: 通过memberId 查询 疾病 集合 
+     * @param memberIds
+     * @return
+     * @throws Exception    
+     * @retrun List<MemBasicInfo>
+     */
+    List<MemBasicInfo> queryDiseaseListBymemeberId(String memberIds)throws Exception;
+    
+    /** 
+     * @Title: findMemMeasureRecordList 
+     * @Description: 医生查看所属下的会员的测量记录 
+     * @author liuxiaoqin
+     * @createDate 2016-01-27
+     * @throws IOException    
+     * @retrun void
+     */
+    List<MemMeasureRecord> findMemMeasureRecordList(MeasureRecordParam param)throws Exception;
+    
+     /** 
+     * @Title: findObsrRecordOne 
+     * @Description: 根据事件id(eventId)查询一条血糖数据 
+     * @author liuxiaoqin
+     * @createDate 2016-01-29
+     * @param eventId
+     * @return
+     * @throws Exception    
+     * @retrun Obsr
+     */
+    public Obsr findObsrRecordOne(Integer eventId) throws Exception;
+    
+     /** 
+     * @Title: findOsbpRecordOne 
+     * @Description:  根据事件id(eventId)查询一条血压数据 
+     * @author liuxiaoqin
+     * @createDate 2016-01-29
+     * @param eventId
+     * @return
+     * @throws Exception    
+     * @retrun Osbp
+     */
+    public Osbp findOsbpRecordOne(Integer eventId) throws Exception;
+    
+     /** 
+     * @Title: findOecgRecordOne 
+     * @Description: 根据事件id(eventId)查询一条心电(mini)数据 
+     * @author liuxiaoqin
+     * @createDate 2016-01-29
+     * @param eventId
+     * @return
+     * @throws Exception    
+     * @retrun Oecg
+     */
+    public Oecg findOecgRecordOne(Integer eventId) throws Exception;
+    
+     /** 
+     * @Title: findThreeJoinOneRecordOne 
+     * @Description: 根据事件id(eventId)查询一条三合一数据 
+     * @author liuxiaoqin
+     * @createDate 2016-01-29
+     * @param eventId
+     * @return
+     * @throws Exception    
+     * @retrun Oppg
+     */
+    public ReturnMeasureData findThreeJoinOneRecordOne(Integer eventId) throws Exception;
+    
+    /** 
+     * @Title: findMemOecgById 
+     * @Description: 医生根据心电oecg的id获取会员的某条心电测量数据(不分三合一和mini)
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-02-22
+     * @throws Exception    
+     * @retrun String
+     */
+    public Oecg findMemOecgById(long id) throws Exception;
+    
+    /** 
+     * @Title: findMemOppgById 
+     * @Description: 医生根据脉搏oppg的id获取会员的某条脉搏数据
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-02-22
+     * @throws Exception    
+     * @retrun String
+     */
+    public Oppg findMemOppgById(long id) throws Exception;
+    
+    /** 
+     * @Title: findDocByAccount 
+     * @Description: 根据医生账号查询该账号是否有效
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-02-24
+     * @throws Exception    
+     * @retrun String
+     */
+    public Odoc findDocByAccount(String account) throws Exception;
+    
+    /** 
+     * @Title: insertEventId 
+     * @Description: 获取事件id
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-02-24
+     * @throws Exception    
+     * @retrun long
+     */
+    public long insertEventId() throws Exception;
+    
+    /** 
+     * @Title: insertId 
+     * @Description: 生成表(oecg,obsr,osbp.oppg)的主键
+     * @param request
+     * @author liuxiaoqin
+     * @createDate 2016-02-24
+     * @throws Exception    
+     * @retrun long
+     */
+    public long insertId(String tableName) throws Exception;
+    
+    /** 
+     * @Title: saveOmdsData 
+     * @Description: 医生保存会员测量事件到事件分表中 
+     * @param omds
+     * @author liuxiaoqin
+     * @createDate 2016-02-24
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer saveMemOmdsData(Omds omds) throws Exception; 
+    
+    /** 
+     * @Title: uploadMemBloodGlucose 
+     * @Description: 医生保存会员血糖记录到血糖分表中 
+     * @param omds
+     * @author liuxiaoqin
+     * @createDate 2016-02-24
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer uploadMemBloodGlucose(Obsr obsr) throws Exception;
+    
+    /** 
+     * @Title: uploadMemBloodPressure 
+     * @Description: 医生保存会员血压记录到血压分表中 
+     * @param omds
+     * @author liuxiaoqin
+     * @createDate 2016-02-24
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer uploadMemBloodPressure(Osbp osbp) throws Exception;
+    
+    /** 
+     * @Title: uploadMemMini 
+     * @Description: 医生保存会员心电记录到心电分表中  
+     * @param omds
+     * @author liuxiaoqin
+     * @createDate 2016-02-24
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer uploadMemMini(Oecg oecg) throws Exception;
+    
+    /** 
+     * @Title: uploadMemPulse 
+     * @Description: 医生保存会员脉搏记录到脉搏分表中 
+     * @param omds
+     * @author liuxiaoqin
+     * @createDate 2016-02-24
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer uploadMemPulse(Oppg oppg) throws Exception;
+    
+    /** 
+     * @Title: findMemHeadImg 
+     * @Description: 医生获取会员头像 
+     * @param omds
+     * @author liuxiaoqin
+     * @createDate 2016-04-08
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Omem findMemHeadImg(Integer memberId) throws Exception;
+
+}

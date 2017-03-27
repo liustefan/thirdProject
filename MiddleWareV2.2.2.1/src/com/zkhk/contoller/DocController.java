@@ -1,0 +1,432 @@
+package com.zkhk.contoller;
+
+import java.io.IOException;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.log4j.Logger;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.ModelAndView;
+
+import com.alibaba.fastjson.JSON;
+import com.zkhk.constants.Constants;
+import com.zkhk.entity.CallValue;
+import com.zkhk.entity.ReturnResult;
+import com.zkhk.entity.ReturnValue;
+import com.zkhk.entity.ViewParam;
+import com.zkhk.services.DocService;
+import com.zkhk.util.GzipUtil;
+import com.zkhk.util.SystemUtils;
+
+@Controller
+@RequestMapping("doc")
+public class DocController {
+
+	private Logger logger = Logger.getLogger(DocController.class);
+	@Resource(name = "docService")
+	private DocService docService;
+
+	/**
+	 * 医生登入
+	 * 
+	 * @param request
+	 * @param response
+	 *            Return 的json格式数据 state成功0，1表示用户名或密码不存在，2表示出现异常
+	 *            content表示成功以后的DocLog对象的json格式 ，不成功没数据
+	 * @throws IOException 
+	 */
+	@RequestMapping("docLogin")
+	public void login(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		try {
+			ReturnResult result = docService.findDocbyNameAndPassWord(request);
+			GzipUtil.write(response, JSON.toJSONString(result));
+		} catch (Exception e) {
+			ReturnValue re = new ReturnValue();
+			re.setState(2);
+			re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+			logger.error("用户登入出现异常:" + e);
+			 e.printStackTrace();
+	        response.getWriter().write(JSON.toJSONString(re));
+		}
+
+	}
+
+	/**
+	 * 医生账号注销
+	 * 
+	 * @param request
+	 * @param response
+	 *            Return 的json格式数据 state成功0，1表示查询不到该，2标示出现异常信息
+	 *            content表示成功以后的MemLog对象的json格式 ，不成功没数据
+	 * @throws IOException 
+	 */
+	@RequestMapping("docLogout")
+	public void docLogout(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		try {
+			String resPString = docService.updateDocSessionByMemId(request);
+			GzipUtil.write(response, resPString);
+		} catch (Exception e) {
+			ReturnValue re = new ReturnValue();
+			re.setState(2);
+			re.setMessage(SystemUtils.getValue(Constants.MODIFY_DATA_EXCEPTION));
+			logger.error("注销异常:"+e);
+			response.getWriter().write(JSON.toJSONString(re));
+		}
+
+	}
+	
+	
+	/**
+	 * 获取我的会员列表
+	 * 
+	 * @param request
+	 * @param response
+	 * @throws IOException 
+	 */
+	@RequestMapping(value="/getMyMemberList",method = RequestMethod.POST)
+	public void getMyMemberList(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		try {
+			String resPString = docService.getMyMemberList(request);
+			GzipUtil.write(response, resPString);
+		} catch (Exception e) {
+			ReturnValue re = new ReturnValue();
+			re.setState(2);
+			re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+			logger.error("获取我的会员列表异常:"+e);
+			response.getWriter().write(JSON.toJSONString(re));
+		}
+	}
+	
+	
+	
+	/**
+	 * 会员自动登录接口
+	 * @param request
+	 * @param response
+	 * @throws IOException
+	 */
+	@RequestMapping("memLogin")
+	public void memLogin(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		try {
+			String resPString = docService.memLogin(request);
+			GzipUtil.write(response, resPString);
+		} catch (Exception e) {
+			ReturnValue re = new ReturnValue();
+			re.setState(2);
+			re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+			logger.error("会员自动登录异常:"+e);
+			response.getWriter().write(JSON.toJSONString(re));
+		}
+	}
+	
+	
+	/**
+	 * 保存会员健康档案
+	 * @param request
+	 * @param response
+	 * @throws IOException
+	 */
+	@RequestMapping("saveMemFile")
+	public void saveMemFile(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		try {
+			String resPString = docService.saveMemFile(request);
+			GzipUtil.write(response, resPString);
+		} catch (Exception e) {
+			ReturnValue re = new ReturnValue();
+			re.setState(1);
+			re.setMessage(SystemUtils.getValue(Constants.ADD_DATA_EXCEPTION));
+			logger.error("保存健康档案失败:"+e);
+			response.getWriter().write(JSON.toJSONString(re));
+		}
+	}
+	
+	
+	/**
+	 * 查看用户的健康档案信息
+	 * @param request
+	 * @param response
+	 * @throws IOException
+	 */
+	@RequestMapping("checkMemFile")
+	public void checkMemFile(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		try {
+			String resPString = docService.checkMemFile(request);
+			GzipUtil.write(response, resPString);
+		} catch (Exception e) {
+			ReturnValue re = new ReturnValue();
+			re.setState(1);
+			re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+			logger.error("获取健康档案失败:"+e);
+			response.getWriter().write(JSON.toJSONString(re));
+		}
+	}
+	
+	 /** 
+	 * @Title: findMemMeasureRecordList 
+	 * @Description: 医生查看所属下的会员的测量记录 
+	 * @param request
+	 * @param response
+	 * @author liuxiaoqin
+	 * @createDate 2016-01-27
+	 * @throws IOException    
+	 * @retrun void
+	 */
+	@RequestMapping(value="findMemMeasureRecordList",method=RequestMethod.POST)
+    public void findMemMeasureRecordList(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try {
+            String resPString = docService.findMemMeasureRecordList(request);
+            GzipUtil.write(response, resPString);
+        } catch (Exception e) {
+            ReturnResult re = new ReturnResult();
+            re.setState(1);
+            re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+            logger.error("获取所属会员的测量记录list异常:"+e);
+            response.getWriter().write(JSON.toJSONString(re));
+        }
+    }
+	
+	/** 
+     * @Title: findMemMeasureRecordOne 
+     * @Description: 医生根据事件id(eventId)和事件类型(eventType)获取会员的某条测量记录 
+     * @param request
+     * @param response
+     * @author liuxiaoqin
+     * @createDate 2016-01-27
+     * @throws IOException    
+     * @retrun void
+     */
+    @RequestMapping(value="findMemMeasureRecordOne",method=RequestMethod.POST)
+    public void findMemMeasureRecordOne(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try {
+            String resPString = docService.findMemMeasureRecordOne(request);
+            GzipUtil.write(response, resPString);
+        } catch (Exception e) {
+            ReturnResult re = new ReturnResult();
+            re.setState(1);
+            re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+            logger.error("获取会员的该条测量记录异常:"+e);
+            response.getWriter().write(JSON.toJSONString(re));
+        }
+    }
+    
+    /** 
+     * @Title: findMemOecgById 
+     * @Description: 医生根据心电oecg的id获取会员的某条心电测量数据(不分三合一和mini)
+     * @param request
+     * @param response
+     * @author liuxiaoqin
+     * @createDate 2016-02-22
+     * @throws IOException    
+     * @retrun void
+     */
+    @RequestMapping(value="findMemOecgById",method=RequestMethod.POST)
+    public void findMemOecgById(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try {
+            String resPString = docService.findMemOecgById(request);
+            GzipUtil.write(response, resPString);
+        } catch (Exception e) {
+            ReturnResult re = new ReturnResult();
+            re.setState(1);
+            re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+            logger.error("医生根据心电的id获取会员的心电测量数据异常:"+e);
+            response.getWriter().write(JSON.toJSONString(re));
+        }
+    }
+    
+    /** 
+     * @Title: findMemOppgById 
+     * @Description: 医生根据脉搏oppg的id获取会员的某条脉搏数据
+     * @param request
+     * @param response
+     * @author liuxiaoqin
+     * @createDate 2016-02-22
+     * @throws IOException    
+     * @retrun void
+     */
+    @RequestMapping(value="findMemOppgById",method=RequestMethod.POST)
+    public void findMemOppgById(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try {
+            String resPString = docService.findMemOppgById(request);
+            GzipUtil.write(response, resPString);
+        } catch (Exception e) {
+            ReturnResult re = new ReturnResult();
+            re.setState(1);
+            re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+            logger.error("医生根据脉搏的id获取会员的脉搏测量数据异常:"+e);
+            response.getWriter().write(JSON.toJSONString(re));
+        }
+    }
+    
+    /** 
+     * @Title: downloadFile 
+     * @Description: 医生根据文件的id下载会员的测量文件信息
+     * @param request
+     * @param response
+     * @author liuxiaoqin
+     * @createDate 2016-02-22
+     * @throws IOException    
+     * @retrun void
+     */
+    @RequestMapping(value="downloadFile",method=RequestMethod.POST)
+    public void downloadFile(HttpServletRequest request,HttpServletResponse response) throws Exception {
+        docService.downloadFile(request, response);
+    }
+	
+    /** 
+     * @Title: uploadMemBloodPressure 
+     * @Description: 医生上传会员的血压数据
+     * @param request
+     * @param response
+     * @author liuxiaoqin
+     * @createDate 2016-02-24
+     * @throws IOException    
+     * @retrun void
+     */
+    @RequestMapping(value="uploadMemBloodPressure",method=RequestMethod.POST)
+    public void uploadMemBloodPressure(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try {
+            String resPString = docService.uploadMemBloodPressure(request);
+            GzipUtil.write(response, resPString);
+        } catch (Exception e) {
+            ReturnResult re = new ReturnResult();
+            re.setState(1);
+            re.setMessage(SystemUtils.getValue(Constants.ADD_DATA_EXCEPTION));
+            logger.error("医生上传会员的血压数据异常:"+e);
+            response.getWriter().write(JSON.toJSONString(re));
+        }
+    }
+    
+    /** 
+     * @Title: uploadMemBloodGlucose 
+     * @Description: 医生上传会员的血糖数据
+     * @param request
+     * @param response
+     * @author liuxiaoqin
+     * @createDate 2016-02-24
+     * @throws IOException    
+     * @retrun void
+     */
+    @RequestMapping(value="uploadMemBloodGlucose",method=RequestMethod.POST)
+    public void uploadMemBloodGlucose(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try {
+            String resPString = docService.uploadMemBloodGlucose(request);
+            GzipUtil.write(response, resPString);
+        } catch (Exception e) {
+            ReturnResult re = new ReturnResult();
+            re.setState(1);
+            re.setMessage(SystemUtils.getValue(Constants.ADD_DATA_EXCEPTION));
+            logger.error("医生上传会员的血糖数据异常:"+e);
+            response.getWriter().write(JSON.toJSONString(re));
+        }
+    }
+    
+    /** 
+     * @Title: uploadMemMini 
+     * @Description: 医生上传会员的心电mini数据
+     * @param request
+     * @param response
+     * @author liuxiaoqin
+     * @createDate 2016-02-24
+     * @throws IOException    
+     * @retrun void
+     */
+    @RequestMapping(value="uploadMemMini",method=RequestMethod.POST)
+    public void uploadMemMini(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try {
+            String resPString = docService.uploadMemMini(request);
+            GzipUtil.write(response, resPString);
+        } catch (Exception e) {
+            ReturnResult re = new ReturnResult();
+            re.setState(1);
+            re.setMessage(SystemUtils.getValue(Constants.ADD_DATA_EXCEPTION));
+            logger.error("医生上传会员的心电mini数据异常:"+e);
+            response.getWriter().write(JSON.toJSONString(re));
+        }
+    }
+    
+    /** 
+     * @Title: uploadMemThreeInOne 
+     * @Description: 医生上传会员的三合一数据
+     * @param request
+     * @param response
+     * @author liuxiaoqin
+     * @createDate 2016-02-24
+     * @throws IOException    
+     * @retrun void
+     */
+    @RequestMapping(value="uploadMemThreeInOne",method=RequestMethod.POST)
+    public void uploadMemThreeInOne(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try {
+            String resPString = docService.uploadMemThreeInOne(request);
+            GzipUtil.write(response, resPString);
+        } catch (Exception e) {
+            ReturnResult re = new ReturnResult();
+            re.setState(1);
+            re.setMessage(SystemUtils.getValue(Constants.ADD_DATA_EXCEPTION));
+            logger.error("医生上传会员的三合一数据异常:"+e);
+            response.getWriter().write(JSON.toJSONString(re));
+        }
+    }
+    
+    /** 
+     * @Title: findMemMeasureRecordImgs 
+     * @Description: 医生获取会员测量数据的图片 
+     * @param request
+     * @param response
+     * @author liuxiaoqin
+     * @createDate 2016-02-29
+     * @throws Exception    
+     * @retrun void
+     */
+    @RequestMapping(value="findMemMeasureRecordImgs",method=RequestMethod.POST)
+    public ModelAndView findMemMeasureRecordImgs(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        docService.findMemMeasureRecordImgs(request,response); 
+        ModelAndView result = new ModelAndView();  
+        String params = request.getParameter("params");
+        CallValue value = JSON.parseObject(params, CallValue.class);
+        ViewParam param = JSON.parseObject(value.getParam(),ViewParam.class);
+        if("ecg".equals(param.getType())||"mi_ecg".equals(param.getType())||"ab_ecg".equals(param.getType())){
+            result.setViewName("/highChart");  
+            return result; 
+        }else if("ppg".equals(param.getType())) {
+            result.setViewName("/ppgChart");  
+            return result;  
+        }else if("hr_ppg".equals(param.getType())) {
+            result.setViewName("/hrppgChart"); 
+            return result;  
+        }else if("hr_ecg".equals(param.getType())) {
+            result.setViewName("/hrecgChart"); 
+            return result;  
+        }   
+        return null;
+    }
+    
+    /** 
+     * @Title: findMemHeadImg 
+     * @Description: 医生获取会员头像
+     * @param request
+     * @param response
+     * @author liuxiaoqin
+     * @createDate 2016-04-08
+     * @throws IOException    
+     * @retrun void
+     */
+    @RequestMapping(value="findMemHeadImg",method=RequestMethod.POST)
+    public void findMemHeadImg(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        try {
+            String resPString = docService.findMemHeadImg(request);
+            GzipUtil.write(response, resPString);
+        } catch (Exception e) {
+            ReturnResult re = new ReturnResult();
+            re.setState(1);
+            re.setMessage(SystemUtils.getValue(Constants.GET_DATA_EXCEPTION));
+            logger.error("医生获取会员头像异常:"+e);
+            response.getWriter().write(JSON.toJSONString(re));
+        }
+    }
+    
+}

@@ -1,0 +1,66 @@
+package com.zkhk.services;
+
+import javax.servlet.http.HttpServletRequest;
+
+import com.zkhk.entity.CallValue;
+
+
+
+public interface MemService {
+    /**
+     * 通过用户名和密码查询会员登入信息
+     * @param request
+     * @return
+     */
+	String findUserbyNameAndPassWord(HttpServletRequest request) throws Exception;
+    /**
+     * 验证用户是否有权限登入 。有返回true没有返回
+     * @param session
+     * @param menberId
+     * @return
+     */
+	String findUserBySessionAndId(String session, int menberId)throws Exception;
+	/**
+	 * 注销用户信息
+	 * @param request
+	 * @return
+	 */
+	String updateUserSessionByMemId(HttpServletRequest request)throws Exception;
+	/**
+	 * 查询会员的基本信息
+	 * @param request
+	 * @return
+	 */
+	String findOmembyId(HttpServletRequest request)throws Exception;
+	/**
+	 * 根据会员id查询会员档案信息
+	 * @param request
+	 * @return
+	 */
+	String findMemFilebyId(HttpServletRequest request)throws Exception;
+	/**
+	 * 编辑会员信息
+	 * @param request
+	 * @return
+	 */
+	String updateOmembyId(HttpServletRequest request)throws Exception;
+	
+	/**
+	 * 修改用户密码
+	 * @param request
+	 * @return
+	 */
+	String updateOmemPassWordByParam(HttpServletRequest request)throws Exception;
+	
+	/**
+	 * 验证用户账号状态，是否被冻结
+	 * @param call
+	 * @return
+	 * @throws Exception
+	 */
+	boolean checkAcountStatus(CallValue call)throws Exception;
+
+
+
+	
+}

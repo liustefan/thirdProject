@@ -1,0 +1,105 @@
+package com.zkhk.dao;
+
+
+import org.springframework.web.multipart.MultipartFile;
+
+import com.zkhk.entity.CallValue;
+import com.zkhk.entity.MemFile;
+import com.zkhk.entity.MemLog;
+import com.zkhk.entity.MemberStatus;
+import com.zkhk.entity.Omem;
+
+/**
+ * 会员管理类
+ * @author bit
+ *
+ */
+public interface MemDao {
+    /**
+     * 通过用户名和密码查询用户的登入信息
+     * @param log
+     * @return
+     * @throws Exception
+     */
+	MemLog findUserbyNameAndPassWord(MemLog log) throws Exception;
+   /**
+    * 跟新用户的登入状态信息
+    * @param loginLog
+    * @throws Exception
+    */
+	void updateMemLogByMemberid(MemLog loginLog) throws Exception;
+	/**
+	 * 验证用户session和id是否可以登入
+	 * @param session
+	 * @param memberId
+	 * @return
+	 * @throws Exception
+	 */
+    boolean findUserBySessionAndId(String session, int memberId)throws Exception;
+    /**
+     * 通过会员id查询会员的基本信息
+     * @param memberId
+     * @return
+     * @throws Exception
+     */
+	Omem findOmembyId(int memberId)throws Exception;
+	/**
+	 * 查询会员档案信息
+	 * @param memberId
+	 * @return
+	 * @throws Exception
+	 */
+	MemFile findMemFilebyId(int memberId)throws Exception;
+	
+	/**
+	 * 更新会员信息
+	 * @param omem
+	 * @throws Exception
+	 */
+	void updateOmembyId(Omem omem) throws Exception;
+	/**
+	 * 修改会员密码修改成被修改行数
+	 * @param memberId
+	 * @param oldPW
+	 * @param newPW
+	 * @return
+	 * @throws Exception
+	 */
+	int updateOmemPassWordByParam(int memberId, String oldPW, String newPW)  throws Exception;
+	/**
+	 * 修改会员头像
+	 * @param headImg
+	 */
+	void updateOmemHeadImgbyId(MultipartFile headImg,int memberId)throws Exception;
+	
+	/**
+	 * 获取会员活力指数
+	 * @param memberId
+	 */
+	float findMemActiveIndexByMemberId(int memberId) throws Exception;
+
+   /**
+    * 通过id查询用户的姓名
+    * @param memberId
+    * @return
+    * @throws Exception
+    */
+	String findNameByMemberId(int memberId)throws Exception;
+
+   /**
+    * 插入用户的登入状态信息
+    * @param loginLog
+    * @throws Exception
+    */
+	void insertMemLogByMemberid(MemLog loginLog) throws Exception;	
+	
+	/**
+	 * 查询验证用户账号是否被冻结
+	 * @param memberId
+	 * @return
+	 * @throws Exception
+	 */
+	MemberStatus queryMemberStatus(String account)throws Exception;
+	
+	
+}

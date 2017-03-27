@@ -1,0 +1,573 @@
+package com.zkhk.services;
+
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.log4j.Logger;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.zkhk.constants.Constants;
+import com.zkhk.dao.DocDao;
+import com.zkhk.dao.MeasureDao;
+import com.zkhk.dao.PcDao;
+import com.zkhk.dao.PushMessageDao;
+import com.zkhk.entity.CallValue;
+import com.zkhk.entity.Mem8;
+import com.zkhk.entity.MemLog;
+import com.zkhk.entity.Odoc;
+import com.zkhk.entity.Oecg;
+import com.zkhk.entity.Omds;
+import com.zkhk.entity.Omem;
+import com.zkhk.entity.PcMiniParam;
+import com.zkhk.entity.PcMiniRecord;
+import com.zkhk.entity.ReturnResult;
+import com.zkhk.mongodao.MongoEntityDao;
+import com.zkhk.rabBit.ClientSender;
+import com.zkhk.util.TimeUtil;
+
+/**
+ * @ClassName:     PcController.java 
+ * @Description:   pc端操作(上传mini等)
+ * @author         liuxiaoqin  
+ * @version        V1.0   
+ * @Date           2016年1月25日 下午2:39:50
+*****/
+@Service("pcService")
+public class PcServcieImpl implements PcService{
+    
+	private Logger logger = Logger.getLogger(PcServcieImpl.class);
+	
+    @Resource(name="pcDao")
+    private PcDao pcDao;
+    
+    @Resource(name = "mongoEntityDao")
+    private MongoEntityDao mongoEntityDao;
+
+    @Resource(name = "pushMessageDao")
+    private PushMessageDao messageDao;
+    
+    @Resource(name = "measureDao")
+    private MeasureDao measureDao;
+    
+    @Resource(name = "docDao")
+    private DocDao docDao;
+    
+    /** 
+     * @Title: addPcMiniRecord 
+     * @Description: 医生在pc端发放一条mini记录
+     * @author liuxiaoqin 
+     * @param request
+     * @param response
+     * @throws IOException    
+     * @retrun void
+     */
+    public String addPcMiniRecord(HttpServletRequest request) throws Exception
+    {
+        ReturnResult re = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        PcMiniRecord pcMiniRecord = JSON.parseObject(callValue.getParam(), PcMiniRecord.class);
+        int doctorId = callValue.getMemberId();
+        if(doctorId <= 0){
+        	re.setState(1);
+            re.setMessage("参数医生id：memberId【"+doctorId+"】应为大于0的正整数！");
+            logger.info("参数医生id：memberId【"+doctorId+"】应为大于0的正整数！");
+            return JSON.toJSONString(re);
+        }else{
+        	pcMiniRecord.setDoctorId(doctorId);
+        }
+        String userId = pcMiniRecord.getUserId();
+        if(StringUtils.isEmpty(userId)){
+            re.setState(1);
+            re.setMessage("参数userId为空！");
+            logger.info("参数userId为空！");
+            return JSON.toJSONString(re);
+        }
+        String bluetoothMacAddr = pcMiniRecord.getBluetoothMacAddr();
+        if(StringUtils.isEmpty(bluetoothMacAddr)){
+            re.setState(1);
+            re.setMessage("参数bluetoothMacAddr为空！");
+            logger.info("参数bluetoothMacAddr为空！");
+            return JSON.toJSONString(re);
+        }
+        /* 验证是否已经下发该用户的mini */
+        PcMiniRecord record = pcDao.findPcMiniRecord(bluetoothMacAddr);
+        if(record != null){
+            re.setState(1);
+            re.setMessage("用户id为："+userId+",设备为："+bluetoothMacAddr +"已下发，请勿重复操作！");
+            logger.info("用户id为："+userId+",设备为："+bluetoothMacAddr +"已下发，请勿重复操作！");
+            return JSON.toJSONString(re);
+        }
+        String sendDownTime = pcMiniRecord.getSendDownTime();
+        if(StringUtils.isEmpty(sendDownTime)){
+            re.setState(1);
+            re.setMessage("参数sendDownTime为空！");
+            logger.info("参数sendDownTime为空！");
+            return JSON.toJSONString(re);
+        }
+        int count = pcDao.addPcMiniRecord(pcMiniRecord);
+        if(count > 0){
+            re.setState(0);
+            re.setMessage("医生下发mini记录成功！");
+            logger.info("医生下发mini记录成功！");
+        }else{
+            re.setState(1);
+            re.setMessage("医生下发mini记录失败！");
+            logger.info("医生下发mini记录失败！");
+        }
+        return JSON.toJSONString(re);
+    }
+    
+    /** 
+     * @Title: deletePcMiniRecord 
+     * @Description: 删除未上传的mini记录 
+     * @author liuxiaoqin
+     * @param request
+     * @param response
+     * @throws IOException    
+     * @retrun void
+     */
+    public String deletePcMiniRecord(HttpServletRequest request) throws Exception
+    {
+        ReturnResult re = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        JSONObject object = JSON.parseObject(callValue.getParam());
+        String bluetoothMacAddr = object.getString("bluetoothMacAddr");
+        if(StringUtils.isEmpty(bluetoothMacAddr)){
+            re.setState(1);
+            re.setMessage("参数bluetoothMacAddr为空！");
+            logger.info("参数bluetoothMacAddr为空！");
+            return JSON.toJSONString(re);
+        }
+        int count = pcDao.deletePcMiniRecord(bluetoothMacAddr);
+        if(count > 0){
+            re.setState(0);
+            re.setMessage("删除mini记录成功！");
+            logger.info("删除mini记录成功！");
+        }else{
+            re.setState(1);
+            re.setMessage("删除mini记录失败或该mini记录已上传不可以删除！");
+            logger.info("删除mini记录失败或该mini记录已上传不可以删除！");
+        }
+        return JSON.toJSONString(re);
+    }
+    
+    /** 
+     * @Title: updatePcMiniRecord 
+     * @Description: 修改mini记录 
+     * @author liuxiaoqin
+     * @param request
+     * @param response
+     * @throws IOException    
+     * @retrun void
+     */
+    public String updatePcMiniRecord(HttpServletRequest request) throws Exception
+    {
+        ReturnResult re = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        JSONObject object = JSON.parseObject(callValue.getParam());
+        String bluetoothMacAddr = object.getString("bluetoothMacAddr");
+        if(StringUtils.isEmpty(bluetoothMacAddr)){
+            re.setState(1);
+            re.setMessage("参数bluetoothMacAddr为空！");
+            logger.info("参数bluetoothMacAddr为空！");
+            return JSON.toJSONString(re);
+        }
+        String userId = object.getString("userId");
+        if(StringUtils.isEmpty(userId)){
+            re.setState(1);
+            re.setMessage("参数userId为空！");
+            logger.info("参数userId为空！");
+            return JSON.toJSONString(re);
+        }
+        String uploadTime = object.getString("uploadTime");
+        if(StringUtils.isEmpty(uploadTime)){
+            re.setState(1);
+            re.setMessage("参数uploadTime为空！");
+            logger.info("参数uploadTime为空！");
+            return JSON.toJSONString(re);
+        }
+        int count = pcDao.updatePcMiniRecord(userId, bluetoothMacAddr, uploadTime);
+        if(count > 0){
+            re.setState(0);
+            re.setMessage("更新上传mini时间成功！");
+            logger.info("更新上传mini时间成功！");
+        }else{
+            re.setState(1);
+            re.setMessage("更新上传mini时间失败或该mini记录已上传！");
+            logger.info("更新上传mini时间或该mini记录已上传！");
+        }
+        return JSON.toJSONString(re);
+    }
+    
+    /** 
+     * @Title: findPcMiniRecordByParam 
+     * @Description: 根据参数分页查询mini记录 
+     * @author liuxiaoqin
+     * @param request
+     * @param response
+     * @throws IOException    
+     * @retrun void
+     */
+    public String findPcMiniRecordByParam(HttpServletRequest request) throws Exception
+    {
+        ReturnResult re = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        PcMiniParam pcMiniParam = JSON.parseObject(callValue.getParam(), PcMiniParam.class);
+        int doctorId = callValue.getMemberId();
+        if(doctorId <= 0){
+        	re.setState(1);
+            re.setMessage("参数医生id：memberId【"+doctorId+"】应为大于0的正整数！");
+            logger.info("参数医生id：memberId【"+doctorId+"】应为大于0的正整数！");
+            return JSON.toJSONString(re);
+        }else{
+        	pcMiniParam.setDoctorId(doctorId);
+        }
+        List<PcMiniRecord> pcMiniRecordList = pcDao.findPcMiniRecordByParam(pcMiniParam);
+        if(pcMiniRecordList.size() > 0){
+            re.setState(0);
+            re.setContent(pcMiniRecordList);
+            re.setMessage("分页查询mini记录成功！");
+            logger.info("分页查询mini记录成功！");
+        }else if(pcMiniRecordList.size() == 0){
+            re.setState(1);
+            re.setMessage("查询不到mini记录！");
+            logger.info("查询不到mini记录！");
+        }else{
+            re.setState(1);
+            re.setMessage("分页查询mini记录失败！");
+            logger.info("分页查询mini记录失败！");
+        }
+        return JSON.toJSONString(re);
+    }
+    
+    /** 
+     * @Title: findOmemByUserId 
+     * @Description: 根据用户id获取用户基本资料 
+     * @author liuxiaoqin
+     * @param request
+     * @param response
+     * @throws IOException    
+     * @retrun void
+     */
+    public String findOmemByUserId(HttpServletRequest request) throws Exception
+    {
+        ReturnResult re = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        JSONObject object = JSON.parseObject(callValue.getParam());
+        String userId = object.getString("userId");
+        if(StringUtils.isEmpty(userId)){
+            re.setState(1);
+            re.setMessage("参数userId为空！");
+            logger.info("参数userId为空！");
+            return JSON.toJSONString(re);
+        }
+        Omem omem = pcDao.findOmemByUserId(userId);
+        if(omem != null){
+            re.setState(0);
+            re.setContent(omem);
+            re.setMessage("查询会员基本信息成功！");
+            logger.info("查询会员基本信息成功！");
+        }else{
+            re.setState(1);
+            re.setMessage("查询会员基本信息失败！");
+            logger.info("查询会员基本信息失败！");
+        }
+        return JSON.toJSONString(re);
+    }
+    
+    /** 
+     * @Title: findMemListByParam 
+     * @Description: 根据医生id和参数分页查询会员列表 
+     * @author liuxiaoqin
+     * @createDate 2016-01-29
+     * @param request
+     * @param response
+     * @throws IOException    
+     * @retrun void
+     */
+    public String findMemListByParam(HttpServletRequest request) throws Exception{
+        ReturnResult re = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        PcMiniParam pcMiniParam = JSON.parseObject(callValue.getParam(), PcMiniParam.class);
+        int doctorId = pcMiniParam.getDoctorId();
+        if(doctorId <= 0){
+            re.setState(1);
+            re.setMessage("参数doctorId"+doctorId+"不是正整数！");
+            logger.info("参数doctorId"+doctorId+"不是正整数！");
+            return JSON.toJSONString(re);
+        }
+        List<Omem> memList = pcDao.findMemListByParam(pcMiniParam);
+        if(memList.size() > 0){
+            re.setState(0);
+            re.setContent(memList);
+            re.setMessage("分页查询会员列表成功！");
+            logger.info("分页查询会员列表成功！");
+        }else if(memList.size() == 0){
+            re.setState(1);
+            re.setMessage("查询不到会员列表！");
+            logger.info("查询不到会员列表！");
+        }else{
+            re.setState(1);
+            re.setMessage("分页查询会员列表失败！");
+            logger.info("分页查询会员列表失败！");
+        }
+        return JSON.toJSONString(re);
+    }
+    
+    /** 
+     * @Title: uploadMiniRecord 
+     * @Description: 医生上传mini记录 
+     * @author liuxiaoqin
+     * @createDate 2016-01-29
+     * @param request
+     * @param response
+     * @throws IOException    
+     * @retrun void
+     */
+    public String uploadMiniRecord (HttpServletRequest request) throws Exception{
+        ReturnResult re = new ReturnResult();
+        String uploadTime = TimeUtil.currentDatetime();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        Oecg oecg = JSON.parseObject(callValue.getParam(), Oecg.class);
+        
+        /*验证mini心电数据是否重复  begin */
+        int countOecg = measureDao.checkHasOecgRecord(oecg.getUserId(), oecg.getMeasureTime());
+        if(countOecg > 0){
+            re.setState(11);
+            re.setMessage("该MINI心电数据已存在，请勿重复上传");
+            logger.info("该MINI心电数据已存在，请勿重复上传");
+            return JSON.toJSONString(re);
+        }
+        /*验证mini心电数据是否重复  end */
+
+        String rawEcg = null;
+        int memberId = oecg.getUserId();
+
+        MultipartHttpServletRequest mRequest = (MultipartHttpServletRequest) request;
+        MultipartFile ecg_file = mRequest.getFile(Constants.ECG_PARAM_FILE);                
+        // 获取保存文件id
+        rawEcg = mongoEntityDao.saveFile(Constants.MDB_FILE, ecg_file,oecg.getInComing());
+//        oecg.setRawEcg(rawEcg);
+//        oecg.setMemberId(memberId);
+//
+//        // 获取事件id
+//        long event_id = measureDao.insertEventId();
+//        oecg.setEventId(event_id);
+//        oecg.setUploadTime(uploadTime);
+//        /** 保存omds表开始 **/
+//        Omds omds = new Omds();
+//        omds.setDataType(4);
+//        omds.setEventId(event_id);
+//        omds.setMemberId(memberId);
+//        omds.setStatusTag(2);
+//        omds.setUploadTime(oecg.getUploadTime());
+//        measureDao.saveOmdsData(omds);
+//        /** 保存omds表结束 **/
+//
+//        // 保存心电数据
+//        // 获取心电id
+//        long ecgid = measureDao.insertId("oecg_docentry");
+//        oecg.setId(ecgid);
+//        measureDao.saveOecgData(oecg);
+        
+        /* V3.0版本开始去掉分表，主键自动生成  begin */
+        /* 保存omds表  begin*/
+        Omds omds = new Omds();
+        omds.setDataType(4);
+        omds.setMemberId(memberId);
+        omds.setStatusTag(2);
+        omds.setUploadTime(oecg.getUploadTime());
+        long eventId = measureDao.insertOmdsReturnPrimaryKey(omds);
+        /* 保存omds表  end*/
+        
+        /* 保存心电oecg表  begin*/
+        oecg.setRawEcg(rawEcg);
+        oecg.setMemberId(memberId);
+        oecg.setEventId(eventId);
+        oecg.setUploadTime(uploadTime);
+        long docentry = measureDao.insertOecgReturnPrimaryKey(oecg);
+        oecg.setId(docentry);
+        /* 保存心电oecg表  end*/
+        /* V3.0版本开始去掉分表，主键自动生成  end */
+        
+        String message = getMqOecgMessage(oecg);
+        ClientSender.sender(message);
+
+        re.setState(0);
+        re.setMessage("成功");
+        re.setContent(docentry);
+        logger.info("保存会员心电测量信息成功");            
+        
+        //添加会员测量一次miniHolter得5 分
+        Mem8 mem8 = new Mem8();
+        mem8.setMemberId(memberId);
+        mem8.setScore(Constants.ONCE_MEASURE_MNH_SCORE);
+        mem8.setUploadTime(uploadTime);
+        measureDao.addMemActivityScore(mem8);
+        /**推送消息----------------------开始**/
+//        Message pushMs=messageDao.getPushMessageByMemberId(memberId,1);
+//        pushMs.setCreateTime(TimeUtil.formatDatetime2(new Date()));
+//        //拉取添加
+//        messageDao.add(pushMs);
+        //推送消息
+//      String memName=memDao.findNameByMemberId(callValue.getMemberId());
+//      PushMessageUtil.sendMessage(new MessageData(callValue.getMemberId(), memName, 1), pushMs.getNotifier());
+        /**推送消息----------------------结束**/
+        return JSON.toJSONString(re);
+        
+    }
+    
+    /**
+     * 获取心电发送到mq的数据
+     * 
+     * @param oecg
+     * @return
+     */
+    private String getMqOecgMessage(Oecg oecg)throws Exception {
+        // ECG_FILTER|Debug,ecg,omds表ID,文件ID,数据类型，采样频率,设备DeviceCode,用户ID
+        StringBuffer sb = new StringBuffer();
+        sb.append("ECGHOLTER_ANALYZE|debug,");
+        sb.append("ecg,");
+        sb.append(oecg.getEventId()).append(",");
+        sb.append(oecg.getRawEcg()).append(",");
+        int dataType = oecg.getDataType();
+        int newDataType = 1;
+        if(dataType != 0){
+            newDataType = dataType;
+        }
+        sb.append(newDataType).append(",");
+        sb.append(oecg.getFs()).append(",");
+        String deviceCode = oecg.getDeviceCode();
+        int addValue = oecg.getAddValue();
+        //老mini设备
+        if(!StringUtils.isEmpty(deviceCode) && "SIAT_ELECECG".equals(deviceCode)){
+            //数据类型为双字节()时 addValue的值为384;单字节的时 addValue的值为47
+            if(newDataType == 1 || newDataType == 2){
+                addValue = 47;
+            }else{
+                addValue = 384;
+            }
+        }
+        //新mini设备
+        else if(!StringUtils.isEmpty(deviceCode) && "ZKHK_ELECECG".equals(deviceCode)){
+            addValue = 200;
+        }
+        sb.append(addValue).append(",");
+        sb.append(oecg.getMemberId());
+        return sb.toString();
+    }
+    
+    /** 
+     * @Title: checkDocOwnMem 
+     * @Description: 根据医生id和会员id，检查会员是否属于医生管理 
+     * @author liuxiaoqin
+     * @createDate 2016-02-01
+     * @param userId
+     * @param doctorId
+     * @return
+     * @throws Exception    
+     */
+    public String checkDocOwnMem (HttpServletRequest request) throws Exception{
+        ReturnResult re = new ReturnResult();
+        String params = request.getParameter("params");
+        CallValue callValue = JSON.parseObject(params, CallValue.class);
+        JSONObject object = JSON.parseObject(callValue.getParam());
+        String userId = object.getString("userId");
+        if(StringUtils.isEmpty(userId)){
+            re.setState(1);
+            re.setMessage("参数userId为空！");
+            logger.info("参数userId为空！");
+            return JSON.toJSONString(re);
+        }
+        String doctorId = object.getString("doctorId");
+        if(StringUtils.isEmpty(doctorId)){
+            re.setState(1);
+            re.setMessage("参数doctorId为空！");
+            logger.info("参数doctorId为空！");
+            return JSON.toJSONString(re);
+        }
+        int count = pcDao.checkDocOwnMem(userId, doctorId);
+        if(count != 1){
+            re.setState(1);
+            re.setMessage("用户id为："+userId+",不属于医生id为："+doctorId +"管理！");
+            logger.info("用户id为："+userId+",不属于医生id为："+doctorId +"管理！");
+        }else{
+            re.setState(0);
+            re.setContent(count);
+            re.setMessage("验证通过！");
+            logger.info("验证通过！");
+        }
+        return JSON.toJSONString(re);
+    }
+    
+    /** 
+     * @Title: docLogin 
+     * @Description: 医生在pc端登录
+     * @author liuxiaoqin 
+     * @createDate 2016-02-24
+     * @param request
+     * @param response
+     * @throws IOException    
+     * @retrun String
+     */
+    public String docLogin(HttpServletRequest request) throws Exception{
+        ReturnResult re = new ReturnResult();
+        String param = request.getParameter("params");
+        CallValue call = JSON.parseObject(param, CallValue.class);
+        MemLog log = JSON.parseObject(call.getParam(), MemLog.class);
+        /* 验证医生是否存在 begin */
+        Odoc doctor = docDao.findDocByAccount(log.getUserAccount());
+        if(doctor != null){
+            MemLog loginLog = docDao.findDocbyNameAndPassWord(log);
+            if (loginLog != null) {
+                String session = UUID.randomUUID().toString();
+                loginLog.setSession(session);
+                loginLog.setLoginTime(TimeUtil.formatDatetime(new Date(),"yyyy-MM-dd HH:mm:ss"));
+                loginLog.setDevice(log.getDevice());
+                // 更新用户的登入信息
+                int row = docDao.updateDocLogByMemberid(loginLog);
+                //用户从未为登录过，保存用户登录信息
+                if(row == 0){
+                    loginLog.setPassWord(log.getPassWord());
+                    docDao.saveDoctorLog(loginLog);
+                }
+                Map<Object, Object> result = new HashMap<Object, Object>();
+                result.put("memberId", loginLog.getMemberId());
+                result.put("session", loginLog.getSession());
+                re.setState(0);
+                re.setContent(result);
+                re.setMessage(log.getUserAccount() + ":登入成功");
+                logger.info(log.getUserAccount() + ":登入成功");
+            }else{
+                re.setState(2);
+                re.setMessage("密码错误!");
+                logger.info(log.getUserAccount() + ":登入失败,密码错误！");
+            }
+        }else{
+            re.setState(1);
+            re.setMessage("用户名错误或者不存在！");
+            logger.info(log.getUserAccount() + ":登入失败,用户名错误或者不存在！");
+            return JSON.toJSONString(re);
+        }
+        /* 验证医生是否存在 end */
+        return JSON.toJSONString(re);
+    }
+}

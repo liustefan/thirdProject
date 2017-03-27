@@ -1,0 +1,173 @@
+package com.zkhk.dao;
+
+import java.util.List;
+import java.util.Map;
+
+import com.zkhk.entity.MemBasicInfo;
+import com.zkhk.entity.MemSearch;
+import com.zkhk.entity.Odoc;
+
+/**
+ * @ClassName:     VisitDao.java 
+ * @Description:   随访
+ * @author         liuxiaoqin  
+ * @version        V1.0   
+ * @Date           2016年03月25日 下午4:13:46
+*****/
+public interface VisitDao {
+    
+    /** 
+     * @Title:  findCanVisitDiabeteMem
+     * @Description: 医生获取可进行糖尿病随访的会员 
+     * @author liuxiaoqin
+     * @createDate 2016-01-29
+     * @param request
+     * @param response
+     * @throws Exception    
+     */
+    public List<MemBasicInfo> findCanVisitDiabeteMem(MemSearch memSearch)throws Exception;
+    
+    /** 
+     * @Title: findCanVisitHyperMem 
+     * @Description: 医生获取可进行高血压随访的会员 
+     * @author liuxiaoqin
+     * @createDate 2016-01-29
+     * @param request
+     * @param response
+     * @throws Exception    
+     */
+    public List<MemBasicInfo> findCanVisitHyperMem(MemSearch memSearch)throws Exception;
+    
+     /** 
+     * @Title: findDoctorBasicInfo 
+     * @Description: 获取医生的基本资料
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-04-04
+     * @return
+     * @throws Exception    
+     * @retrun Odoc
+     */
+    public Odoc findDoctorBasicInfo(Integer doctorId)throws Exception;
+    
+     /** 
+     * @Title: hasVisitingHyperRecord 
+     * @Description: 该会员是否存在待随访的高血压记录 
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-04-11
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer hasVisitingHyperRecord(Integer memberId)throws Exception;
+    
+    /** 
+     * @Title: hasVisitingDiabetesRecord 
+     * @Description: 该会员是否存在待随访的糖尿病记录 
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-04-11
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer hasVisitingDiabetesRecord(Integer memberId)throws Exception;
+    
+    /** 
+     * @Title: findLifeAndPhysicalAndExamination 
+     * @Description: 根据会员id自动获取最新的体格，血糖，生活方式 
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-04-28
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Map<String,Object> findLifeAndPhysicalAndExamination(Integer memberId,String visitType)throws Exception;
+    
+    /** 
+     * @Title: findRecentMedication 
+     * @Description: 根据会员id自动获取用药情况 
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-04-28
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Map<String,Object> findRecentMedication(Integer memberId,String visitType)throws Exception;
+    
+    /** 
+     * @Title: isOneVisitingDiabeteRecord 
+     * @Description: 实时验证该条记录是否为糖尿病待随访 
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-05-04
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer isOneVisitingDiabeteRecord(Long diabetesID)throws Exception;
+    
+    /** 
+     * @Title: isOneVisitingHyperRecord 
+     * @Description: 时验证该条记录是否为高血压待随访 
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-05-04
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer isOneVisitingHyperRecord(Long hyperID)throws Exception;
+    
+    /** 
+     * @Title: hasHyperDetailRecord 
+     * @Description: 是否有高血压明细id
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-10-31
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer hasHyperDetailRecord(Long hyperID)throws Exception;
+    
+    /** 
+     * @Title: hasDiabeteDetailRecord 
+     * @Description: 是否有糖尿病明细id
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-10-31
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer hasDiabeteDetailRecord(Long diabetesID)throws Exception;
+    
+    /** 
+     * @Title: insertHyperDetailRecord 
+     * @Description: 新增高血压明细id
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-10-31
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public void insertHyperDetailRecord(Long hyperID)throws Exception;
+    
+    /** 
+     * @Title: insertDiabeteDetailRecord 
+     * @Description: 新增糖尿病明细id
+     * @param doctorId
+     * @author liuxiaoqin
+     * @createDate 2016-10-31
+     * @return
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public void insertDiabeteDetailRecord(Long diabetesID)throws Exception;
+    
+}

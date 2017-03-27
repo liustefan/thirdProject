@@ -1,0 +1,132 @@
+package com.zkhk.dao.Impl;
+
+import java.util.ArrayList;
+import java.util.List;
+import javax.annotation.Resource;
+import org.springframework.jdbc.support.rowset.SqlRowSet;
+import org.springframework.stereotype.Repository;
+import org.springframework.util.StringUtils;
+import com.zkhk.dao.VisitDao;
+import com.zkhk.entity.MemBasicInfo;
+import com.zkhk.entity.MemSearch;
+import com.zkhk.jdbc.JdbcService;
+import com.zkhk.util.TimeUtil;
+
+/**
+ * @ClassName:     VisitDaoImpl.java 
+ * @Description:   随访
+ * @author         liuxiaoqin  
+ * @version        V1.0   
+ * @Date           2016年03月25日 下午4:13:46
+*****/
+@Repository(value="visitDao")
+public class VisitDaoImpl implements VisitDao{
+    
+    @Resource
+    private JdbcService jdbcService;
+    
+    /** 
+     * @Title:  findCanVisitDiabeteMem
+     * @Description: 医生获取可进行糖尿病随访的会员 
+     * @author liuxiaoqin
+     * @createDate 2016-01-29
+     * @param request
+     * @param response
+     * @throws Exception    
+     */
+    public List<MemBasicInfo> findCanVisitDiabeteMem(MemSearch memSearch)throws Exception{
+        List<MemBasicInfo> list = new ArrayList<MemBasicInfo>();
+        String searchName = memSearch.getSearchParam();
+        StringBuffer sql = new StringBuffer();
+        sql.append(" SELECT o.Tel, o.Docid AS doctorId, o.BirthDate AS birthDate, o.Gender AS gender, o.IdCard AS idCard, o.Memberid AS memberId, o.MemName AS memberName, ");
+        sql.append(" GROUP_CONCAT(DISTINCT CAST(od.DiseaseID AS CHAR) ORDER BY od.DiseaseID) AS diseaseIds,GROUP_CONCAT(DISTINCT od.DiseaseName ORDER BY od.DiseaseID) AS diseaseNames ");
+        sql.append(" FROM (SELECT DISTINCT tt.Memberid FROM (SELECT o.Memberid FROM omem o,ompb m,odmt d,dgp1 g,mem3 od WHERE o.useTag = 'T' ");
+        sql.append(" AND o.orgId = g.OrgId AND g.Docid = ? AND m.memberid = o.memberid AND m.memGrpid = d.MemGrpid AND d.OdgpId = g.OdgpId AND o.Memberid = od.Memberid AND od.DiseaseID = ? ");
+        if(!StringUtils.isEmpty(searchName)){
+            sql.append(" AND  (o.MemName like '%"+searchName+"%' or o.IdCard like '%"+searchName+"%' or o.Tel like '%"+searchName+"%' ) ");
+        }
+        int endRecord = memSearch.getPageSize();
+        int beginRecord = (memSearch.getPageNow()-1)*endRecord;
+        sql.append(" GROUP BY o.Memberid HAVING COUNT(DISTINCT od.DiseaseID) = 1 ORDER BY o.MemName,o.Memberid)tt LEFT JOIN ph_diabetes ph on tt.Memberid = ph.MemberID ");
+        sql.append(" WHERE (ph.VisitClass >0 OR ph.VisitClass IS NULL) LIMIT "+beginRecord+" ," +endRecord +" ) ");
+        sql.append(" aa LEFT JOIN omem o ON aa.Memberid = o.memberid LEFT JOIN  mem3 od ON aa.Memberid = od.Memberid GROUP BY o.MemName, o.Memberid ");
+        String finalSql = sql.toString();
+        SqlRowSet rowSet = jdbcService.query(finalSql,new Object[]{memSearch.getDoctorId(),memSearch.getDiseaseId()});
+        while(rowSet.next()){
+            MemBasicInfo info = new MemBasicInfo();
+            info.setAge(TimeUtil.getCurrentAgeByBirthdate(rowSet.getString("birthDate")));
+            info.setDoctorId(rowSet.getString("doctorId"));
+            info.setGender(rowSet.getString("gender"));
+            info.setIdCard(rowSet.getString("idCard"));
+            info.setMemberId(rowSet.getInt("memberId"));
+            info.setMemberName(rowSet.getString("memberName"));
+            String tel = rowSet.getString("Tel");
+            if(!StringUtils.isEmpty(tel)){
+                info.setTel(tel);
+            }
+            String newDiseaseIds = rowSet.getString("diseaseIds");
+            String newDiseaseNames = rowSet.getString("diseaseNames");
+            if(!StringUtils.isEmpty(newDiseaseIds)){
+                info.setDiseaseIds(newDiseaseIds);
+            }
+            if(!StringUtils.isEmpty(newDiseaseNames)){
+                info.setDiseaseNames(newDiseaseNames);
+            }
+            list.add(info);
+        }
+        return list;
+    }
+    
+    /** 
+     * @Title: findCanVisitHyperMem 
+     * @Description: 医生获取可进行高血压随访的会员 
+     * @author liuxiaoqin
+     * @createDate 2016-01-29
+     * @param request
+     * @param response
+     * @throws Exception    
+     */
+    public List<MemBasicInfo> findCanVisitHyperMem(MemSearch memSearch)throws Exception{
+        List<MemBasicInfo> list = new ArrayList<MemBasicInfo>();
+        String searchName = memSearch.getSearchParam();
+        StringBuffer sql = new StringBuffer();
+        sql.append(" SELECT o.Tel, o.Docid AS doctorId, o.BirthDate AS birthDate, o.Gender AS gender, o.IdCard AS idCard, o.Memberid AS memberId, o.MemName AS memberName, ");
+        sql.append(" GROUP_CONCAT(DISTINCT CAST(od.DiseaseID AS CHAR) ORDER BY od.DiseaseID) AS diseaseIds,GROUP_CONCAT(DISTINCT od.DiseaseName ORDER BY od.DiseaseID) AS diseaseNames ");
+        sql.append(" FROM (SELECT DISTINCT tt.Memberid FROM (SELECT o.Memberid FROM omem o,ompb m,odmt d,dgp1 g,mem3 od WHERE o.useTag = 'T' ");
+        sql.append(" AND o.orgId = g.OrgId AND g.Docid = ? AND m.memberid = o.memberid AND m.memGrpid = d.MemGrpid AND d.OdgpId = g.OdgpId AND o.Memberid = od.Memberid AND od.DiseaseID = ? ");
+        if(!StringUtils.isEmpty(searchName)){
+            sql.append(" AND  (o.MemName like '%"+searchName+"%' or o.IdCard like '%"+searchName+"%' or o.Tel like '%"+searchName+"%' ) ");
+        }
+        int endRecord = memSearch.getPageSize();
+        int beginRecord = (memSearch.getPageNow()-1)*endRecord;
+        sql.append(" GROUP BY o.Memberid HAVING COUNT(DISTINCT od.DiseaseID) = 1 ORDER BY o.MemName,o.Memberid)tt LEFT JOIN ph_hypertension ph on tt.Memberid = ph.MemberID ");
+        sql.append(" WHERE (ph.VisitClass >0 OR ph.VisitClass IS NULL) LIMIT "+beginRecord+" ," +endRecord +" ) ");
+        sql.append(" aa LEFT JOIN omem o ON aa.Memberid = o.memberid LEFT JOIN  mem3 od ON aa.Memberid = od.Memberid GROUP BY o.MemName, o.Memberid ");
+        String finalSql = sql.toString();
+        SqlRowSet rowSet = jdbcService.query(finalSql,new Object[]{memSearch.getDoctorId(),memSearch.getDiseaseId()});
+        while(rowSet.next()){
+            MemBasicInfo info = new MemBasicInfo();
+            info.setAge(TimeUtil.getCurrentAgeByBirthdate(rowSet.getString("birthDate")));
+            info.setDoctorId(rowSet.getString("doctorId"));
+            info.setGender(rowSet.getString("gender"));
+            info.setIdCard(rowSet.getString("idCard"));
+            info.setMemberId(rowSet.getInt("memberId"));
+            info.setMemberName(rowSet.getString("memberName"));
+            String tel = rowSet.getString("Tel");
+            if(!StringUtils.isEmpty(tel)){
+                info.setTel(tel);
+            }
+            String newDiseaseIds = rowSet.getString("diseaseIds");
+            String newDiseaseNames = rowSet.getString("diseaseNames");
+            if(!StringUtils.isEmpty(newDiseaseIds)){
+                info.setDiseaseIds(newDiseaseIds);
+            }
+            if(!StringUtils.isEmpty(newDiseaseNames)){
+                info.setDiseaseNames(newDiseaseNames);
+            }
+            list.add(info);
+        }
+        return list;
+    }
+    
+}

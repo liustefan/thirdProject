@@ -1,0 +1,249 @@
+package com.zkhk.dao;
+
+import java.sql.Date;
+import java.util.List;
+
+import com.zkhk.entity.Mfq1;
+import com.zkhk.entity.Mfq11;
+import com.zkhk.entity.Ocam;
+import com.zkhk.entity.Ocqt;
+import com.zkhk.entity.Omfq;
+import com.zkhk.entity.Oopt;
+import com.zkhk.entity.Ouai;
+import com.zkhk.entity.AnswerParam;
+import com.zkhk.entity.Uai21;
+
+public interface AnswerDao {
+    /**
+     * 查询会员的答卷信息
+     * @param param
+     * @return
+     * @throws Exception
+     */
+	List<Ouai> findOuaiByParam(AnswerParam param) throws Exception;
+    /**
+     * 查询会员组合答卷信息
+     * @param param
+     * @return
+     * @throws Exception
+     */
+	List<Ocam> findOcamByParam(AnswerParam param)  throws Exception;
+	/**
+	 * 查询会员组合答卷的级联关系
+	 * @param param
+	 * @return
+	 * @throws Exception
+	 */
+	List<Ouai> findOuaiByParam2(String param) throws Exception;
+	/**
+	 * 查询问卷对象信息
+	 * @param param
+	 * @return
+	 * @throws Exception
+	 */
+	Omfq findOmfqByParam(int qustId) throws Exception;
+	/**
+	 * 查询问卷答案信息
+	 * @param ansNumber
+	 * @return
+	 * @throws Exception
+	 */
+	List<Mfq11> findResultByParam(int ansNumber) throws Exception;
+	/**
+	 * 
+	 * @param list
+	 */
+	void saveUai21ByParam(List<Uai21> list,String qustTag)throws Exception;
+	/**
+	 * 设获取单个问题答案
+	 * @param list
+	 * @return
+	 * @throws Exception
+	 */
+	double getScore(List<Uai21> list) throws Exception;
+	/**
+	 * 根据问卷id和分数获取结论
+	 * @param qustId
+	 * @param totalScore
+	 * @return
+	 * @throws Exception
+	 */
+	String getResultByQustIdAndScore(int qustId, double totalScore)throws Exception;
+	/**
+	 * 保存答案结果
+	 * @param ansNumber
+	 * @param totalScore
+	 * @param request
+	 * @throws Exception
+	 */
+	void saveOuai4(int ansNumber, double totalScore, String result)throws Exception;
+	/**
+	 * 查看组合答卷在关联卷是否已经作答 是返回 true ，不是返回false
+	 * @param relation
+	 * @return
+	 * @throws Exception
+	 */
+	boolean findisFinish(String relation) throws Exception;
+	
+	/**
+     * @Description 修改组合答卷状态为已作答或者作答中
+     * @author liuxiaoqin
+     * @CreateDate 2015年11月19日
+    */
+    public void updateOcamStatusById(int combAnsId,String combTag) throws Exception;
+    
+	/**
+	 * 查询问卷信息
+	 * @param qustId
+	 * @return
+	 * @throws Exception
+	 */
+	Omfq findOmfqByParam2(int qustId)throws Exception;
+	
+	/**
+	 * 查询问卷创建的时间
+	 * @param qustId
+	 * @return
+	 * @throws Exception
+	 */
+	Date findQustCreateTimeByQustId(int qustId)throws Exception;
+	
+	/**
+	  * @Description 单份答卷的存储过程
+	  * @author liuxiaoqin
+	  * @CreateDate 2015年11月19日
+	*/
+	void pro_fromOUAIinsOASR(int orgId, int qustId, int memberId, int optId,Date date);
+	
+	/**
+     * @Description 组合答卷的存储过程
+     * @author liuxiaoqin
+     * @CreateDate 2015年11月19日
+    */
+    public void pro_fromOCAMinsOASR(int combAnsNumber, int memberId, Date publisherTime,int orgId,int optId);
+	
+	
+	/**
+	  * @Description 查询会员的单份答卷：(已答和未答)
+	  * @author liuxiaoqin
+	  * @CreateDate 2015年10月12日
+	*/
+	public List<Ouai> findMemSingleAnswer(AnswerParam param) throws Exception;
+	
+	/**
+	  * @Description 获取会员单份答卷总得分，结论和审核建议(已审核)
+	  * @author liuxiaoqin
+	  * @CreateDate 2015年10月13日
+	*/
+	public Ouai findMemSingleAnswerSummary(Integer ansNumber) throws Exception;
+	
+	/**
+	  * @Description 更新已审核的会员答卷为已读("0")
+	  * @author liuxiaoqin
+	  * @CreateDate 2015年10月13日
+	*/
+	public Integer updateMemSingleAnswerHasApproved(Integer ansNumber) throws Exception;
+	
+	/**
+	  * @Description 根据答卷id会员已答单份答卷的答案
+	  * @author liuxiaoqin
+	  * @CreateDate 2015年10月13日
+	*/
+	public List<Uai21> findMemSingleAnswerDetail(Integer ansNumber)throws Exception;
+	
+	/**
+	  * @Description 获取终审医生建议
+	  * @author liuxiaoqin
+	  * @CreateDate 2015年10月13日
+	*/
+	public String getAuditDesc(int id) throws Exception;
+	
+	/**
+     * @Description 获取终审医生诊断结果
+     * @author liuxiaoqin
+     * @CreateDate 2015年10月13日
+   */
+   public String getDiagnosis(int id) throws Exception;
+	
+	/**
+	  * @Description 获取单份问卷的所有题目
+	  * @author liuxiaoqin
+	  * @CreateDate 2015年10月13日
+	*/
+	public List<Mfq1> findMemSingleQustAllTitle(Integer qustId)throws Exception;
+	
+	/**
+	  * @Description 每个题目的选项
+	  * @author liuxiaoqin
+	  * @CreateDate 2015年10月13日
+	*/
+	public List<Mfq11> findMemSingleQustTitleOption(Integer qustId, Integer titleId)throws Exception;
+	
+	/**
+     * @Description 删除会员第一次暂存的答案
+     * @author liuxiaoqin
+     * @CreateDate 2015年10月13日
+    */
+    public void deleteMemSingleQustFristDraft(Integer ansNumber)throws Exception;
+    
+    /**
+     * @Description 获取会员单份答卷的总分与结论。
+     * @author liuxiaoqin
+     * @CreateDate 2015年11月9日
+    */
+    public Ouai getSingleAnsScoreAndConclusion(Integer ansNumber) throws Exception;
+    
+    /**
+     * @Description 获取终审一审的建议，诊断结果，审核时间。
+     * @author liuxiaoqin
+     * @CreateDate 2015年11月9日
+    */
+    public Ouai getSingleAnsDocAdviceAndTime(Integer ansNumber,AnswerParam param) throws Exception;
+	
+    /**
+     * @Description 根据组合问卷id来查找组合问卷详细信息
+     * @author liuxiaoqin
+     * @CreateDate 2015年11月19日
+    */
+    public Ocqt findCombQustByQustId(int combQustId) throws Exception;
+    
+    /**
+     * @Description 提交单份答卷
+     * @author liuxiaoqin
+     * @CreateDate 2015年11月30日
+    */
+    public void submitSingleAnswer(int ansNumber,int optId, String optName,int memberId,String answerType) throws Exception;
+    
+    /**
+     * @Description 提交组合答卷
+     * @author liuxiaoqin
+     * @CreateDate 2015年11月30日
+    */
+    public void submitCombAnswer(int combAnsId,int optId, String optName,int memberId) throws Exception;
+    
+    /**
+     * @Description 根据单份问卷id获取oopt
+     * @author liuxiaoqin
+     * @CreateDate 2015年11月30日
+    */
+    public Oopt findOoptBySingleQustId(int qustId) throws Exception;
+    
+    /**
+     * @Description 根据组合问卷id获取oopt
+     * @author liuxiaoqin
+     * @CreateDate 2015年11月30日
+    */
+    public Oopt findOoptByCombQustId(int combQustId) throws Exception;
+    
+    /** 
+     * @Title: addNewAnswer 
+     * @Description: 新增答卷
+     * @author liuxiaoqin
+     * @createDate 2016-05-26 
+     * @param ouai
+     * @throws Exception    
+     * @retrun Integer
+     */
+    public Integer addNewAnswer(Ouai ouai) throws Exception;
+
+}

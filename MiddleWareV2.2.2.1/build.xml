@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>    
+    <project name="MiddleWare" default="build" basedir=".">    
+        <!-- 工程根目录 -->    
+        <property name="MiddleWare.home" value="."/>    
+        <!-- 工程根名 -->    
+        <property name="MiddleWare.name" value="MiddleWare"/>    
+          
+        <!-- tomcat路径   -->
+    	
+        <property name="tomcat.home" value="/home/apache-tomcat-build-7.0.59"/>
+         
+    	<!--
+    	<property name="tomcat.home" value="E:\Tomcat7.0"/>     
+         -->
+        <!-- tomcat部署路径 -->    
+        <property name="webapps.home" value="${tomcat.home}/webapps"/>    
+           
+        <!-- JAVA源文件路径 -->    
+        <property name="src.home" value="${MiddleWare.home}/src"/>    
+            
+        <!-- class文件存放位置 -->    
+        <property name="classes.home" value="${MiddleWare.home}/WebRoot/WEB-INF/classes"/>    
+          
+        <!-- 发布文件夹 -->    
+         <property name="deploy.home" value="${MiddleWare.home}/deploy"/>    
+        <!--  
+        <property name="deploy.home" value="${MiddleWare.home}/deploy"/>   
+         -->  
+           
+        <!-- webRoot路径 -->    
+        <property name="web.home" value="${MiddleWare.home}/WebRoot"/>    
+            
+        <!-- 创建工程路径 -->    
+        <property name="build.home" value="${MiddleWare.home}/build"/>    
+        <!-- /WEB-INF/classes -->    
+        <property name="build.classes" value="${MiddleWare.home}/WEB-INF/classes"/>    
+        <!-- /WEB-INF/lib -->    
+        <property name="build.lib" value="${MiddleWare.home}/WEB-INF/lib"/>    
+        <!-- 工程引用包 -->    
+        <property name="lib.home" value="${web.home}/WEB-INF/lib"/>    
+            
+            
+        <!-- 编译工程所需的JAR包 -->    
+        <path id="compile.classpath">    
+            <pathelement location="${classes.home}"/>    
+            <fileset dir="${lib.home}">    
+                    <include name="*.jar"/>    
+                    <include name="*.zip"/>    
+            </fileset>    
+            <fileset dir="${tomcat.home}/lib">    
+                <include name="*.jar"/>    
+            </fileset>    
+            <pathelement location="${tomcat.home}/common/classes"/>    
+        </path>    
+            
+            
+        <!-- 测试ANT -->    
+        <target name="help">    
+            <echo message="Here is a list of possible targets:"/>    
+            <echo message="  clean-all....Delete build dir,all .class and war files"/>    
+            <echo message="  perpare....Creates directories if requied"/>    
+            <echo message="  compile....Compiles source files"/>    
+            <echo message="  build......Build war file from.class and other files"/>    
+            <echo message="  deploy......Copy war file to the webapps directory"/>    
+        </target>    
+            
+            
+        <!-- 清除 -->    
+        <target name="clean-all">    
+            <delete dir="${build.home}"/>    
+            <delete dir="${classes.home}"/>    
+            <delete dir="${deploy.home}"/>    
+                
+            <delete dir="${webapps.home}/${MiddleWare.name}" failonerror="false"/>  
+            <delete dir="${tomcat.home}/work/" />    
+            <delete dir="${webapps.home}/${MiddleWare.name}.war"/>    
+        </target>    
+            
+            
+        <!-- 准备工作 -->    
+        <target name="prepare" depends="clean-all">    
+            <echo message="Tomcat Home=${tomcat.home}"/>    
+            <echo message="Webapps Home=${webapps.home}"/>    
+            <echo message="classes Home=${classes.home}"/>    
+            <echo message="war Home=${deploy.home}"/>  
+            <echo message="Java src Home=${src.home}"/>  
+             
+            <mkdir dir="${classes.home}"/>    
+            <mkdir dir="${deploy.home}"/>         
+                
+            <mkdir dir="${build.home}"/>    
+            <mkdir dir="${build.home}/WEB-INF"/>    
+            <mkdir dir="${build.home}/WEB-INF/classes"/>    
+            <mkdir dir="${build.home}/WEB-INF/lib"/>    
+        </target>    
+            
+            
+        <!-- 编译 -->    
+        <target name="compile" depends="prepare">    
+            <javac srcdir="${src.home}" destdir="${classes.home}"  includeantruntime="on" debug="true">  
+                <compilerarg line="-encoding UTF-8"/>     
+                <classpath refid="compile.classpath"/>    
+            </javac>    
+        </target>    
+            
+        <!-- 构建临时工程 -->    
+        <target name="build" depends="compile">    
+            <copy todir="${build.home}">    
+                <fileset dir="${web.home}"/>    
+            </copy>    
+            <copy todir="${build.home}/WEB-INF/classes">    
+                <fileset dir="${classes.home}"/>    
+            </copy>    
+                
+            <copy todir="${build.home}/WEB-INF/classes">    
+                <fileset dir="${src.home}">    
+                    <include name="**/*.properties"/>    
+                    <include name="**/*.prop"/>
+                	<include name="**/*.xml"/>
+                </fileset>    
+            </copy>    
+                
+            <jar jarfile="${deploy.home}/${MiddleWare.name}.war" basedir="${build.home}"/>    
+        </target>
+        
+        <!-- 发布 -->
+        <target name="deploy" depends="build">    
+            <copy todir="${webapps.home}" file="${deploy.home}/${MiddleWare.name}.war"/>    
+        </target>
+    	
+    	 <!-- 清除临时编译工程-->
+        <target name="delete-build" depends="deploy">    
+           <delete dir="${build.home}"/>  
+		</target>
+    </project>    

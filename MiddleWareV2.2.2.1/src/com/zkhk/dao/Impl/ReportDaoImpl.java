@@ -1,0 +1,304 @@
+package com.zkhk.dao.Impl;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.bson.types.ObjectId;
+import org.springframework.jdbc.support.rowset.SqlRowSet;
+import org.springframework.stereotype.Repository;
+
+import com.mongodb.gridfs.GridFSDBFile;
+import com.zkhk.dao.ReportDao;
+import com.zkhk.entity.Obsr;
+import com.zkhk.entity.Oecg;
+import com.zkhk.entity.Omrr;
+import com.zkhk.entity.Oppg;
+import com.zkhk.entity.Osbp;
+import com.zkhk.entity.OsmrParam;
+import com.zkhk.entity.RecordParam;
+import com.zkhk.entity.SummaryReport;
+import com.zkhk.jdbc.JdbcService;
+import com.zkhk.mongodao.MongoEntityDao;
+import com.zkhk.util.ByteToInputStream;
+import com.zkhk.util.ImageUtils;
+import com.zkhk.util.TimeUtil;
+import com.zkhk.util.Util;
+@Repository(value="reportDao")
+public class ReportDaoImpl implements ReportDao {
+	  @Resource
+	  private JdbcService jdbcService;
+	  
+		@Resource(name = "mongoEntityDao")
+		private MongoEntityDao mongoEntityDao;
+
+	public List<SummaryReport> findSummaryReportbyParam(OsmrParam  param)
+			throws Exception {
+		 List<SummaryReport> reports=new ArrayList<SummaryReport>();
+		 
+		 String sql="SELECT d.* ,e.SignAddress,e.DocName  from ( select a.ID,a.SumRepCode,a.GrenerTime,a.ChkDesc,a.readStatus,b.TempName,c.Docid,c.AuditTime ,c.AuditDesc "+
+				    "from osmr a left join osms b on a.SumRepTempCode=b.SumRepTempCode  LEFT JOIN smr1 c on a.ID = c.ID "+
+                    "where a.MemberId=? and ReportState<>0 and  a.GrenerTime between ? and ? ) d LEFT JOIN odoc e on d.Docid = e.Docid GROUP BY d.ID  ORDER BY GrenerTime desc limit ?,?";
+			SqlRowSet rowSet=jdbcService.query(sql,new Object[]{param.getMemberId(),param.getTimeStart(),param.getTimeEnd(),(param.getPage()-1)*param.getCount(),param.getCount()});
+			while(rowSet.next()){
+				SummaryReport report=new SummaryReport();
+				report.setChkDesc(rowSet.getString("ChkDesc"));
+				report.setGrenerTime(TimeUtil.paserDatetime2(rowSet.getString("GrenerTime")));
+				report.setId(rowSet.getInt("ID"));
+				report.setRelations(getRelationsbySRId(report.getId()));
+				report.setSumRepCode(rowSet.getString("SumRepCode"));
+				report.setTempName(rowSet.getString("TempName"));
+				report.setReadStatus(rowSet.getInt("readStatus"));
+				report.setAuditTiem(TimeUtil.paserDatetime2(rowSet.getString("AuditTime")));
+				report.setAuditDocName(rowSet.getString("DocName"));
+				String signAddress =  rowSet.getString("SignAddress");
+				if(signAddress != null && !signAddress.trim().equals("")){
+					ObjectId id = new ObjectId(signAddress);
+					GridFSDBFile file = mongoEntityDao.retrieveFileOne("headImage",id);
+					if(file != null){
+						report.setDoctorSignature(ImageUtils.encodeImgageToBase64(ByteToInputStream.input2byte(ImageUtils.resize(param.getWidth(), param.getHeight(), file.getInputStream()))));
+					}
+				}
+				reports.add(report);
+			}
+			return reports;
+	}                               
+
+	private String getRelationsbySRId(int id) {
+		String sql="SELECT SingleID FROM smr2 where id=?";
+		SqlRowSet rowSet=jdbcService.query(sql,new Object[]{id});
+		String re="";
+		while(rowSet.next()){
+			re+=rowSet.getString("SingleID")+",";
+			
+		}
+		if(re.length()>0){
+			return re.substring(0, re.length()-1);
+		}else {
+			return re;
+		}
+		
+	}
+
+	public List<Omrr> findReportbyParam(String param) throws Exception {
+         List<Omrr> omrrs=new ArrayList<Omrr>();
+		 String sql="select a.ID,a.ReportCode,a.GrenerTime,a.MeasTime,a.MeasTermTime,a.MeasNum,a.MeasCorrNo,a.MeasCorrTermNo,a.OptId,a.ChkDesc ,b.TempName from omrr a LEFT JOIN orts b  ON a.TempCode=b.TempCode where a.ID in ("+param+")";
+			SqlRowSet rowSet=jdbcService.query(sql);
+			while(rowSet.next()){
+		    Omrr omrr=new Omrr();
+		    //omrr.setChkDesc(rowSet.getString("ChkDesc"));
+		    omrr.setGrenerTime(TimeUtil.paserDatetime2(rowSet.getString("GrenerTime")));
+		    omrr.setId(rowSet.getInt("ID"));
+		    omrr.setMeasCorrNo(rowSet.getLong("MeasCorrNo"));
+		    omrr.setMeasCorrTermNo(rowSet.getLong("MeasCorrTermNo"));
+		    omrr.setMeasNum(rowSet.getInt("MeasNum"));
+		    omrr.setMeasTermTime(TimeUtil.paserDatetime2(rowSet.getString("MeasTermTime")));
+		    omrr.setMeasTime(TimeUtil.paserDatetime2(rowSet.getString("MeasTime")));
+		    int optId=rowSet.getInt("OptId");
+		    if(optId==1){
+		    	 omrr.setMeasureType("BP");
+		    }else if(optId==2) {
+		    	 omrr.setMeasureType("BS");
+			}else if(optId==3) {
+				 omrr.setMeasureType("H_ECG");
+			}else if(optId==4) {
+				 omrr.setMeasureType("ECG");
+			}
+		    omrr.setReportCode(rowSet.getString("ReportCode"));
+		    omrr.setTempName(rowSet.getString("TempName"));
+				omrrs.add(omrr);
+				
+			}
+			return omrrs;
+	}
+
+	public List<Osbp> findOsbpByRecordValue(RecordParam param) throws Exception {
+		String sql = "select b.Docentry,b.EventId,b.UploadTime,b.TestTime,b.Abnormal,b.timePeriod,b.SBP,b.DBP,b.PulseRate "
+				+ "from osbp b where b.MemberId=?  and b.TestTime between ? and ? and b.delTag='0' order by b.TestTime desc";
+		List<Osbp> list = new ArrayList<Osbp>();
+		SqlRowSet rowSet = jdbcService.query(sql,
+				new Object[] { param.getMemberId(), param.getMeasureStart(),
+						param.getMeasureEnd() });
+		while (rowSet.next()) {
+			Osbp osbp = new Osbp();
+			osbp.setAbnormal(rowSet.getString("Abnormal"));
+			osbp.setDbp(rowSet.getInt("DBP"));
+			osbp.setEventId(rowSet.getLong("EventId"));
+			osbp.setId(rowSet.getLong("Docentry"));
+			osbp.setPulseRate(rowSet.getInt("PulseRate"));
+			osbp.setSbp(rowSet.getInt("SBP"));
+			osbp.setTestTime(TimeUtil.paserDatetime2(rowSet
+					.getString("TestTime")));
+			osbp.setTimePeriod(rowSet.getInt("timePeriod"));
+			osbp.setUploadTime(TimeUtil.paserDatetime2(rowSet
+					.getString("UploadTime")));
+			osbp.setMemberId(param.getMemberId());
+			list.add(osbp);
+		}
+		return list;
+	}
+
+	public List<Obsr> findObsrByRecordValue(RecordParam param) throws Exception {
+		String sql = "select b.Docentry,b.EventId,b.Memberid,b.UploadTime,b.TestTime,b.BsValue,b.timePeriod,b.AnalysisResult"
+				+ " from  obsr b where b.MemberId=? and b.TestTime between ? and ? and b.delTag='0' order by b.TestTime desc";
+		List<Obsr> list = new ArrayList<Obsr>();
+		SqlRowSet rowSet = jdbcService.query(sql,
+				new Object[] { param.getMemberId(), param.getMeasureStart(),
+						param.getMeasureEnd() });
+		while (rowSet.next()) {
+			Obsr osbr = new Obsr();
+			osbr.setAnalysisResult(rowSet.getInt("AnalysisResult"));
+			osbr.setBsValue(rowSet.getFloat("BsValue"));
+			osbr.setEventId(rowSet.getLong("EventId"));
+			osbr.setId(rowSet.getLong("Docentry"));
+			osbr.setMemberId(param.getMemberId());
+			osbr.setTestTime(TimeUtil.paserDatetime2(rowSet
+					.getString("TestTime")));
+			osbr.setTimePeriod(rowSet.getInt("timePeriod"));
+			osbr.setUploadTime(TimeUtil.paserDatetime2(rowSet
+					.getString("UploadTime")));
+			list.add(osbr);
+		}
+		return list;
+	}
+
+	public List<Oppg> findOppgByRecordValue(RecordParam param) throws Exception {
+		String sql = "select b.BluetoothMacAddr, b.DeviceCode, b.fs, b.Docentry,b.EventId,b.TimeLength,b.UploadTime,b.MeasureTime,b.PulsebeatCount,b.SlowPulse,b.SlowTime,b.QuickPulse,b.QuickTime,b.PulseRate,b.Spo,b.SPO1,b.CO,b.SI,b.SV,b.CI,b.SPI,b.K,b.K1,b.V,b.TPR,b.PWTT,b.Pm,b.AC,"
+				+ "  b.ImageNum,b.AbnormalData,b.Ppgrr,b.RawPPG,b.PPGResult,b.StatusTag,b.kLevel,b.svLevel,b.coLevel,b.siLevel,b.vLevel,b.tprLevel,b.spoLevel,b.ciLevel,b.spiLevel,b.pwttLevel,b.acLevel,b.prLevel"
+				+ " from oppg b  where b.MemberId=? and b.MeasureTime between ? and ? and b.delTag='0' order by b.MeasureTime desc  ";
+		List<Oppg> list = new ArrayList<Oppg>();
+		SqlRowSet rowSet = jdbcService.query(sql,
+				new Object[] { param.getMemberId(), param.getMeasureStart(),
+						param.getMeasureEnd() });
+		while (rowSet.next()) {
+			Oppg oppg = new Oppg();
+			oppg.setFs(rowSet.getInt("fs"));
+			oppg.setAbnormalData(rowSet.getInt("AbnormalData"));
+			oppg.setAc(rowSet.getFloat("AC"));
+			oppg.setCi(rowSet.getFloat("CI"));
+			oppg.setCo(rowSet.getFloat("CO"));
+			oppg.setEventId(rowSet.getLong("EventId"));
+			oppg.setId(rowSet.getLong("Docentry"));
+			oppg.setImageNum(rowSet.getInt("ImageNum"));
+			oppg.setK(rowSet.getFloat("K"));
+			oppg.setK1(rowSet.getFloat("K1"));
+			oppg.setMeasureTime(TimeUtil.paserDatetime2(rowSet
+					.getString("MeasureTime")));
+			oppg.setPm(rowSet.getFloat("Pm"));
+			oppg.setPpgResult(rowSet.getInt("PPGResult"));
+			oppg.setPpgrr(rowSet.getString("Ppgrr"));
+			oppg.setPulsebeatCount(rowSet.getInt("PulsebeatCount"));
+			oppg.setPulseRate(rowSet.getInt("PulseRate"));
+			oppg.setPwtt(rowSet.getFloat("PWTT"));
+			oppg.setQuickPulse(rowSet.getInt("QuickPulse"));
+			oppg.setQuickTime(rowSet.getInt("QuickTime"));
+			oppg.setRawPpg(rowSet.getString("RawPPG"));
+			oppg.setSi(rowSet.getFloat("SI"));
+			oppg.setSlowPulse(rowSet.getInt("SlowPulse"));
+			oppg.setSlowTime(rowSet.getInt("SlowTime"));
+			oppg.setSpi(rowSet.getFloat("SPI"));
+			oppg.setSpo(rowSet.getInt("Spo"));
+			oppg.setSpo1(rowSet.getInt("SPO1"));
+			oppg.setStatusTag(rowSet.getInt("StatusTag"));
+			oppg.setSv(rowSet.getFloat("SV"));
+			oppg.setTimeLength(rowSet.getInt("TimeLength"));
+			oppg.setTpr(rowSet.getFloat("TPR"));
+			oppg.setUploadTime(TimeUtil.paserDatetime2(rowSet
+					.getString("UploadTime")));
+			oppg.setV(rowSet.getFloat("V"));
+			oppg.setMemberId(param.getMemberId());
+			oppg.setK1Level(rowSet.getInt("kLevel"));
+			oppg.setSvLevel(rowSet.getInt("svLevel"));
+			oppg.setCoLevel(rowSet.getInt("coLevel"));
+			oppg.setAcLevel(rowSet.getInt("acLevel"));
+			oppg.setSiLevel(rowSet.getInt("siLevel"));
+			oppg.setV1Level(rowSet.getInt("vLevel"));
+			oppg.setTprLevel(rowSet.getInt("tprLevel"));
+			oppg.setSpoLevel(rowSet.getInt("spoLevel"));
+			oppg.setCiLevel(rowSet.getInt("ciLevel"));
+			oppg.setSpiLevel(rowSet.getInt("spiLevel"));
+			oppg.setPwttLevel(rowSet.getInt("pwttLevel"));
+			oppg.setPrLevel(rowSet.getInt("prLevel"));
+			oppg.setDeviceCode(rowSet.getString("DeviceCode"));
+			oppg.setBluetoothMacAddr(rowSet.getString("BluetoothMacAddr"));
+			// System.out.println(rowSet.getInt("kLevel")+"--------"+rowSet.getInt("vLevel"));
+			list.add(oppg);
+		}
+		return list;
+	}
+
+	public List<Oecg> findOecgByRecordValue(RecordParam param) throws Exception {
+		String sql = "select b.sdnn,b.pnn50,b.hrvi,  b.BluetoothMacAddr, b.DeviceCode, b.fs, b.measTime,b.Docentry,b.EventId,b.UploadTime,b.TimeLength,b.HeartNum,b.SlowestBeat,b.SlowestTime,b.FastestBeat,b.FastestTime,b.AverageHeart,b.RawECGImg,b.FreqPSD,b.RRInterval,b.RawECG,b.ECGResult,b.StatusTag,b.SDNNLevel,b.pnn50Level,b.hrviLevel,b.rmssdLevel,b.tplevel,b.vlfLevel,b.lfLevel,b.hfLevel,b.lhrLevel,b.hrLevel"
+				+ " from  oecg b   where b.MemberId=?  and b.measTime between ? and ? and b.delTag='0' order by b.measTime desc  ";
+		List<Oecg> list = new ArrayList<Oecg>();
+		SqlRowSet rowSet = jdbcService.query(sql,
+				new Object[] { param.getMemberId(), param.getMeasureStart(),
+						param.getMeasureEnd() });
+		while (rowSet.next()) {
+			Oecg oecg = new Oecg();
+			oecg.setFs(rowSet.getInt("fs"));
+			oecg.setAverageHeart(rowSet.getInt("AverageHeart"));
+			oecg.setEcgResult(rowSet.getInt("ECGResult"));
+			oecg.setEventId(rowSet.getLong("EventId"));
+			oecg.setFastestBeat(rowSet.getInt("FastestBeat"));
+			oecg.setFastestTime(rowSet.getInt("FastestTime"));
+			oecg.setFrepPsd(rowSet.getString("FreqPSD"));
+			oecg.setHeartNum(rowSet.getInt("HeartNum"));
+			oecg.setId(rowSet.getLong("Docentry"));
+			oecg.setMeasureTime(TimeUtil.paserDatetime2(rowSet
+					.getString("measTime")));
+			oecg.setRawEcg(rowSet.getString("RawECG"));
+			oecg.setRawEcgImg(rowSet.getString("RawECGImg"));
+			oecg.setRrInterval(rowSet.getString("RRInterval"));
+			oecg.setSlowestBeat(rowSet.getInt("SlowestBeat"));
+			oecg.setSlowestTime(rowSet.getInt("SlowestTime"));
+			oecg.setStatusTag(rowSet.getInt("StatusTag"));
+			oecg.setTimeLength(rowSet.getInt("TimeLength"));
+			oecg.setUploadTime(TimeUtil.paserDatetime2(rowSet
+					.getString("UploadTime")));
+			oecg.setMemberId(param.getMemberId());
+			oecg.setSdnnLevel(rowSet.getInt("sdnnLevel"));
+			oecg.setPnn50Level(rowSet.getInt("pnn50Level"));
+			oecg.setHrviLevel(rowSet.getInt("hrviLevel"));
+			oecg.setRmssdLevel(rowSet.getInt("rmssdLevel"));
+			oecg.setTpLevel(rowSet.getInt("tplevel"));
+			oecg.setVlfLevel(rowSet.getInt("vlfLevel"));
+			oecg.setLfLevel(rowSet.getInt("lfLevel"));
+			oecg.setHfLevel(rowSet.getInt("hfLevel"));
+			oecg.setLhrLevel(rowSet.getInt("lhrLevel"));
+			oecg.setHrLevel(rowSet.getInt("hrLevel"));
+			oecg.setDeviceCode(rowSet.getString("DeviceCode"));
+			oecg.setBluetoothMacAddr(rowSet.getString("BluetoothMacAddr"));
+			oecg.setPnn50(rowSet.getFloat("pnn50"));
+			oecg.setSdnn(rowSet.getFloat("sdnn"));
+			oecg.setHrvi(rowSet.getFloat("hrvi"));
+			list.add(oecg);
+		}
+		return list;
+	}
+	
+	/**
+	  * @Description 更新会员测量报告状态为已读(0:已读;1：未读)
+	  * @author liuxiaoqin
+	  * @CreateDate 2015年10月14日
+	*/
+	public Integer updateReportReadStatus(Integer reportId) throws Exception{
+	    int count = 0;
+	    String sql = " update osmr set readStatus = 0 where ID = ? ";
+        count = jdbcService.doExecuteSQL(sql, new Object[]{reportId});
+	    return count;
+	}
+
+	@Override
+	public int queryUnreadReport(OsmrParam param) throws Exception {
+		int amount = 0;
+		String sql=" select count(id) as amount  from osmr  where  ReportState<>0  and readStatus = 1  and  GrenerTime between ? and ?  and MemberId=?";
+		SqlRowSet rowSet=jdbcService.query(sql,new Object[]{param.getTimeStart(),param.getTimeEnd(),param.getMemberId()});
+		while(rowSet.next()){
+			amount = rowSet.getInt("amount");
+		}
+		return amount;
+	}
+	
+}

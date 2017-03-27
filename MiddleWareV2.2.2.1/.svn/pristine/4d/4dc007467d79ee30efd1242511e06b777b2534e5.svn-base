@@ -1,0 +1,40 @@
+package com.zkhk.dao;
+
+import java.util.List;
+
+import com.zkhk.entity.MemBasicInfo;
+import com.zkhk.entity.MemSearch;
+
+/**
+ * @ClassName:     VisitDao.java 
+ * @Description:   随访
+ * @author         liuxiaoqin  
+ * @version        V1.0   
+ * @Date           2016年03月25日 下午4:13:46
+*****/
+public interface VisitDao {
+    
+    /** 
+     * @Title:  findCanVisitDiabeteMem
+     * @Description: 医生获取可进行糖尿病随访的会员 
+     * @author liuxiaoqin
+     * @createDate 2016-01-29
+     * @param request
+     * @param response
+     * @throws Exception    
+     */
+    public List<MemBasicInfo> findCanVisitDiabeteMem(MemSearch memSearch)throws Exception;
+    
+    /** 
+     * @Title: findCanVisitHyperMem 
+     * @Description: 医生获取可进行高血压随访的会员 
+     * @author liuxiaoqin
+     * @createDate 2016-01-29
+     * @param request
+     * @param response
+     * @throws Exception    
+     */
+    public List<MemBasicInfo> findCanVisitHyperMem(MemSearch memSearch)throws Exception;
+    
+
+}
